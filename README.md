@@ -3,13 +3,13 @@
 ## 📌 Overview
 This repository is an implementation and extension of the research conducted by [HKUDS/AI-Trader](https://github.com/HKUDS/AI-Trader). It features an autonomous trading agent powered by Large Language Models (LLMs) that makes real-time trading decisions based on live price data, financial news, and technical analysis.
 
-This specific implementation is optimized for the **US Nasdaq-100 Market** using the **DeepSeek-V3** reasoning model.
+This specific implementation is optimized for the **US Nasdaq-100 Market** using the **DeepSeek-V3 Chat** model. While utilizing the chat variant for tool-calling stability, the system implements an **agentic reasoning loop** that allows the model to perform multi-step analysis similar to dedicated reasoning models.
 
 ---
 
 ## 🧠 Trading Logic & Strategy
 
-The agent operates on an hourly frequency using a **multi-step reasoning loop** (Chain-of-Thought):
+The agent operates on an hourly frequency using a **multi-step agentic loop** (Chain-of-Thought simulation):
 
 1.  **Data Gathering:** The agent pulls hourly OHLC prices for the top 100 Nasdaq stocks.
 2.  **Information Retrieval:** It uses a search tool to scan for macro-economic news and stock-specific catalysts (earnings, product launches, etc.).
