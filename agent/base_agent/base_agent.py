@@ -41,14 +41,75 @@ class DeepSeekChatOpenAI(ChatOpenAI):
     Custom ChatOpenAI wrapper for DeepSeek API compatibility.
     Handles the case where DeepSeek returns tool_calls.args as JSON strings instead of dicts.
     """
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        print(f"DEBUG: DeepSeekChatOpenAI initialized for model {self.model_name}")
 
     def _create_message_dicts(self, messages: list, stop: Optional[list] = None) -> list:
-        """Override to handle response parsing"""
+        """Override to ensure content is a string in the message dicts"""
         message_dicts = super()._create_message_dicts(messages, stop)
+        if message_dicts:
+            self._fix_messages(message_dicts)
         return message_dicts
 
+    def _get_request_payload(self, input_: Any, *, stop: Optional[List[str]] = None, **kwargs: Any) -> Dict:
+        """Override for newer LangChain versions to fix messages in the request payload"""
+        payload = super()._get_request_payload(input_, stop=stop, **kwargs)
+        if "messages" in payload:
+            self._fix_messages(payload["messages"])
+        return payload
+
+    def _convert_messages_to_params(self, messages: List, stop: Optional[List[str]] = None, **kwargs: Any) -> Dict:
+        """Override to ensure content is a string in params (Compatibility with older LangChain)"""
+        params = super()._convert_messages_to_params(messages, stop, **kwargs)
+        if "messages" in params:
+            self._fix_messages(params["messages"])
+        return params
+
+    def _fix_messages(self, messages: list) -> None:
+        """Helper to fix message content for DeepSeek - Recursive String Flattener"""
+        for i, m in enumerate(messages):
+            if "content" in m:
+                content = m["content"]
+                if isinstance(content, list):
+                    # Combine all text parts into one string
+                    parts = []
+                    for part in content:
+                        if isinstance(part, str):
+                            parts.append(part)
+                        elif isinstance(part, dict) and "text" in part:
+                            parts.append(part["text"])
+                        elif isinstance(part, dict) and "type" in part and part["type"] == "text":
+                            parts.append(part.get("text", ""))
+                    m["content"] = "".join(parts)
+                elif content is None:
+                    m["content"] = ""
+                
+                # CRITICAL: Force whatever is left to be a string
+                if not isinstance(m["content"], str):
+                    m["content"] = str(m["content"])
+                
+                # If content is still weirdly formatted (e.g. still looks like a list as a string)
+                # No, DeepSeek should be fine with a string.
+                
+            # DeepSeek also hates empty tool_calls fields in some contexts
+            if "tool_calls" in m and not m["tool_calls"]:
+                del m["tool_calls"]
+            
+            # Additional check: DeepSeek hates 'None' values in tool_calls
+            if "tool_calls" in m and m["tool_calls"]:
+                for tc in m["tool_calls"]:
+                    if "function" in tc and "arguments" in tc["function"]:
+                        if tc["function"]["arguments"] is None:
+                            tc["function"]["arguments"] = "{}"
+        return
+
     def _generate(self, messages: list, stop: Optional[list] = None, **kwargs):
-        """Override generation to fix tool_calls format in responses"""
+        """Override generation to fix messages before sending and tool_calls in responses"""
+        # CRITICAL: We need to fix the messages here too if they are being passed directly
+        # However, ChatOpenAI converts them to dicts later. To be safe, we let super handle it 
+        # but we call the fixer in _convert_messages_to_params (which we already overrode).
+        
         # Call parent's generate method
         result = super()._generate(messages, stop, **kwargs)
 
@@ -385,7 +446,7 @@ class BaseAgent:
                     base_url=self.openai_base_url,
                     api_key=self.openai_api_key,
                     max_retries=3,
-                    timeout=30,
+                    timeout=120,
                 )
             else:
                 self.model = ChatOpenAI(
@@ -393,7 +454,7 @@ class BaseAgent:
                     base_url=self.openai_base_url,
                     api_key=self.openai_api_key,
                     max_retries=3,
-                    timeout=30,
+                    timeout=120,
                 )
         except Exception as e:
             raise RuntimeError(f"❌ Failed to initialize AI model: {e}")
@@ -426,7 +487,7 @@ class BaseAgent:
             try:
                 if self.verbose:
                     print(f"🤖 Calling LLM API ({self.basemodel})...")
-                return await self.agent.ainvoke({"messages": message}, {"recursion_limit": 100})
+                return await self.agent.ainvoke({"messages": message}, {"recursion_limit": 200})
             except Exception as e:
                 if attempt == self.max_retries:
                     raise e

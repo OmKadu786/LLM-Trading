@@ -46,27 +46,8 @@ def _parse_timestamp_to_dt(ts: str) -> datetime:
 
 def get_market_type() -> str:
     """
-    智能获取市场类型，支持多种检测方式：
-    1. 优先从配置中读取 MARKET
-    2. 如果未设置，则根据 LOG_PATH 推断（agent_data_astock -> cn, agent_data_crypto -> crypto, agent_data -> us）
-    3. 最后默认为 us
-
-    Returns:
-        "cn" for A-shares market, "us" for US market, "crypto" for cryptocurrency market
+    Always returns 'us' for the dedicated NASDAQ environment.
     """
-    # 方式1: 从配置读取
-    market = get_config_value("MARKET", None)
-    if market in ["cn", "us", "crypto"]:
-        return market
-
-    # 方式2: 根据 LOG_PATH 推断
-    log_path = get_config_value("LOG_PATH", "./data/agent_data")
-    if "astock" in log_path.lower() or "a_stock" in log_path.lower():
-        return "cn"
-    elif "crypto" in log_path.lower():
-        return "crypto"
-
-    # 方式3: 默认为美股
     return "us"
 
 
@@ -229,39 +210,15 @@ all_sse_50_symbols = [
 
 
 def get_merged_file_path(market: str = "us") -> Path:
-    """Get merged.jsonl path based on market type.
-
-    Args:
-        market: Market type, "us" for US stocks, "cn" for A-shares, "crypto" for cryptocurrencies
-
-    Returns:
-        Path object pointing to the merged.jsonl file
-    """
+    """Get merged.jsonl path for the US market."""
     base_dir = Path(__file__).resolve().parents[1]
-    if market == "cn":
-        return base_dir / "data" / "A_stock" / "merged.jsonl"
-    elif market == "crypto":
-        return base_dir / "data" / "crypto" / "crypto_merged.jsonl"
-    else:
-        return base_dir / "data" / "merged.jsonl"
+    return base_dir / "data" / "merged.jsonl"
 
 def _resolve_merged_file_path_for_date(
     today_date: Optional[str], market: str, merged_path: Optional[str] = None
 ) -> Path:
-    """
-    Resolve the correct merged data file path taking into account market and granularity.
-    For A-shares:
-      - Daily: data/A_stock/merged.jsonl
-      - Hourly (timestamp contains space): data/A_stock/merged_hourly.jsonl
-    A custom merged_path, if provided, takes precedence.
-    """
-    if merged_path is not None:
-        return Path(merged_path)
-    base_dir = Path(__file__).resolve().parents[1]
-    if market == "cn" and today_date and " " in today_date:
-        # Hourly trading session for A-shares
-        return base_dir / "data" / "A_stock" / "merged_hourly.jsonl"
-    return get_merged_file_path(market)
+    """Always returns the US merged.jsonl path as a Path object."""
+    return get_merged_file_path("us")
 
 
 def is_trading_day(date: str, market: str = "us") -> bool:

@@ -14,6 +14,7 @@ from langchain_mcp_adapters.client import MultiServerMCPClient
 from langchain_openai import ChatOpenAI
 from langchain.agents import create_agent
 from dotenv import load_dotenv
+from langchain_core.messages import HumanMessage, AIMessage
 
 # Import project tools
 import sys
@@ -28,6 +29,7 @@ from prompts.agent_prompt import get_agent_system_prompt, STOP_SIGNAL
 load_dotenv()
 
 from agent.base_agent.base_agent import BaseAgent
+
 
 class BaseAgent_Hour(BaseAgent):
     """
@@ -76,11 +78,10 @@ class BaseAgent_Hour(BaseAgent):
                 pass
 
         # Initial user query
-        user_query = [{"role": "user", "content": f"Please analyze and update today's ({today_date}) positions."}]
-        message = user_query.copy()
+        message = [HumanMessage(content=f"Please analyze and update today's ({today_date}) positions.")]
         
         # Log initial message
-        self._log_message(log_file, user_query)
+        self._log_message(log_file, [{"role": "user", "content": m.content} for m in message])
         
         # Trading loop
         current_step = 0
@@ -106,18 +107,17 @@ class BaseAgent_Hour(BaseAgent):
                 tool_msgs = extract_tool_messages(response)
                 tool_response = '\n'.join([msg.content for msg in tool_msgs if msg.content is not None])
                 
-                # Prepare new messages
-                new_messages = [
-                    {"role": "assistant", "content": agent_response},
-                    {"role": "user", "content": f'Tool results: {tool_response}'}
-                ]
-                
                 # Add new messages
-                message.extend(new_messages)
+                new_msgs = [
+                    AIMessage(content=agent_response),
+                    HumanMessage(content=f'Tool results: {tool_response}')
+                ]
+                message.extend(new_msgs)
                 
                 # Log messages
-                self._log_message(log_file, new_messages[0])
-                self._log_message(log_file, new_messages[1])
+                self._log_message(log_file, {"role": "assistant", "content": agent_response})
+                self._log_message(log_file, {"role": "user", "content": f'Tool results: {tool_response}'})
+
                 
             except Exception as e:
                 print(f"❌ Trading session error: {str(e)}")
@@ -273,6 +273,10 @@ class BaseAgent_Hour(BaseAgent):
         
         # Process each trading day
         for date in trading_dates:
+            print(f"\n" + "═"*70)
+            print(f"🚀 [ BACKTEST PROGRESS ] » {date} | Agent: {self.signature}")
+            print(f"═"*70 + "\n")
+            
             print(f"🔄 Processing {self.signature} - Date: {date}")
             
             # Set configuration
