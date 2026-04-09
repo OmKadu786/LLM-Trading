@@ -1,105 +1,45 @@
-import os
-
-from dotenv import load_dotenv
-
-load_dotenv()
 import json
-import os
-import sys
-from datetime import datetime, timedelta
-from pathlib import Path
-from typing import Dict, List, Optional
-
-# Add project root directory to Python path
-project_root = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-sys.path.insert(0, project_root)
-from tools.general_tools import get_config_value
-from tools.price_tools import (all_nasdaq_100_symbols, all_sse_50_symbols,
-                               format_price_dict_with_names, get_open_prices,
-                               get_today_init_position, get_yesterday_date,
-                               get_yesterday_open_and_close_price,
-                               get_yesterday_profit)
+from tools.alpaca_client import get_alpaca_client
 
 STOP_SIGNAL = "<FINISH_SIGNAL>"
 
-agent_system_prompt = """
-You are a stock fundamental analysis trading assistant.
+def get_agent_system_prompt(today_date: str, signature: str, market: str = "us", stock_symbols: list = None) -> str:
+    try:
+        client = get_alpaca_client()
+        account = client.get_account()
+        positions = client.get_positions()
+        positions_str = json.dumps({**positions, "CASH": account["cash"]}, indent=2)
+    except Exception as e:
+        positions_str = f"Error fetching from Alpaca: {e}"
+        account = {"cash": 0, "equity": 0, "buying_power": 0}
+        
+    return f"""
+You are a stock fundamental analysis trading assistant connected to a LIVE Alpaca paper trading brokerage account.
 
 Your goals are:
-- Think and reason by calling available tools.
-- You need to think about the prices of various stocks and their returns.
-- Your long-term goal is to maximize returns through this portfolio.
-- Before making decisions, gather as much information as possible through search tools to aid decision-making.
+- Analyze the current market and your portfolio using available tools.
+- Use the get_price_live tool to check current prices before trading.
+- Use the get_price_history tool to analyze trends (RSI, moving averages, etc.).
+- Use the search tool to find relevant market news.
+- Execute trades using buy/sell tools — these place REAL orders on Alpaca.
+- Your long-term goal is to maximize returns.
 
-Thinking standards:
-- Clearly show key intermediate steps:
-  - Read input of yesterday's positions and today's prices
-  - Update valuation and adjust weights for each target (if strategy requires)
+Your current account:
+- Cash: ${account.get('cash', 0):,.2f}
+- Total Equity: ${account.get('equity', 0):,.2f}
+- Buying Power: ${account.get('buying_power', 0):,.2f}
+- Today's Realized + Unrealized PnL: ${account.get('daily_pnl', 0):,.2f} ({account.get('daily_pnl_percent', 0):.2f}%)
 
-Notes:
-- You don't need to request user permission during operations, you can execute directly
-- You must execute operations by calling tools, directly output operations will not be accepted
+Your current positions:
+{positions_str}
 
-Here is the information you need:
+Trading rules:
+- Only trade US stocks (NASDAQ/NYSE).
+- Maximum 10% of portfolio in a single position.
+- Risk Management: When executing the `buy` tool, rigorously estimate momentum to calculate a logical `take_profit` limit and a sensible `stop_loss` floor to protect capital. Always set these parameters.
+- Always verify prices using `get_price_live` and momentum across tools before placing orders.
+- You don't need user permission — execute directly.
 
-Current time:
-{date}
-
-Your current positions (numbers after stock codes represent how many shares you hold, numbers after CASH represent your available cash):
-{positions}
-
-The current value represented by the stocks you hold:
-{yesterday_close_price}
-
-Current buying prices:
-{today_buy_price}
-
-When you think your task is complete, output
+When your analysis and trading is complete, output:
 {STOP_SIGNAL}
 """
-
-
-def get_agent_system_prompt(
-    today_date: str, signature: str, market: str = "us", stock_symbols: Optional[List[str]] = None
-) -> str:
-    print(f"signature: {signature}")
-    print(f"today_date: {today_date}")
-    print(f"market: {market}")
-
-    # Auto-select stock symbols based on market if not provided
-    if stock_symbols is None:
-        stock_symbols = all_sse_50_symbols if market == "cn" else all_nasdaq_100_symbols
-
-    # Get yesterday's buy and sell prices
-    yesterday_buy_prices, yesterday_sell_prices = get_yesterday_open_and_close_price(
-        today_date, stock_symbols, market=market
-    )
-    today_buy_price = get_open_prices(today_date, stock_symbols, market=market)
-    today_init_position = get_today_init_position(today_date, signature)
-    # yesterday_profit = get_yesterday_profit(today_date, yesterday_buy_prices, yesterday_sell_prices, today_init_position)
-    
-    # Filter positions to only show non-zero holdings and CASH
-    filtered_positions = {k: v for k, v in today_init_position.items() if v != 0 or k == "CASH"}
-    
-    # Filter today's prices to only show stocks with prices
-    filtered_today_prices = {k: v for k, v in today_buy_price.items() if v is not None}
-    
-    # Optional: If you want to keep the prompt even shorter, you can show only top 20 or something, 
-    # but the agent needs to know what stocks it CAN buy.
-    # For now, let's just keep the non-zero positions simplified.
-    
-    return agent_system_prompt.format(
-        date=today_date,
-        positions=filtered_positions,
-        STOP_SIGNAL=STOP_SIGNAL,
-        yesterday_close_price=yesterday_sell_prices,
-        today_buy_price=filtered_today_prices,
-    )
-
-
-if __name__ == "__main__":
-    today_date = get_config_value("TODAY_DATE")
-    signature = get_config_value("SIGNATURE")
-    if signature is None:
-        raise ValueError("SIGNATURE environment variable is not set")
-    print(get_agent_system_prompt(today_date, signature))
