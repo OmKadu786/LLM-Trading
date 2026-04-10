@@ -30,7 +30,7 @@ class MCPServiceManager:
         mcp_server_dir = os.path.dirname(os.path.abspath(__file__))
         self.service_configs = {
             "math": {"script": os.path.join(mcp_server_dir, "tool_math.py"), "name": "Math", "port": self.ports["math"]},
-            "search": {"script": os.path.join(mcp_server_dir, "tool_alphavantage_news.py"), "name": "Search", "port": self.ports["search"]},  
+            "search": {"script": os.path.join(mcp_server_dir, "tool_jina_search.py"), "name": "JinaSearch", "port": self.ports["search"]},  
             "alpaca": {"script": os.path.join(mcp_server_dir, "tool_alpaca_mcp.py"), "name": "AlpacaLive", "port": self.ports["alpaca"]},
         }
 
