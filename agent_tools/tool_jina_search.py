@@ -14,8 +14,7 @@ import re
 import sys
 from datetime import datetime, timedelta
 
-sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
-from tools.general_tools import get_config_value
+import sys
 
 logger = logging.getLogger(__name__)
 
@@ -188,7 +187,7 @@ class WebScrapingJinaTool:
                     continue
 
                 # Check if before TODAY_DATE
-                today_date = get_config_value("TODAY_DATE")
+                today_date = None
                 if today_date:
                     if today_date > standardized_date:
                         filtered_urls.append(item["url"])
