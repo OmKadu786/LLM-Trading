@@ -1,6 +1,5 @@
 # Core Orchestration
 langchain==0.3.14
-langchain-core==0.3.28
 langchain-openai==0.2.14
 
 # Model Context Protocol
