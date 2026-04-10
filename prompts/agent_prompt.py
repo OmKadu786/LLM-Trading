@@ -8,7 +8,7 @@ def get_agent_system_prompt(today_date: str, signature: str = "", market: str = 
         client = get_alpaca_client()
         account = client.get_account()
         positions = client.get_positions()
-        positions_str = json.dumps({**positions, "CASH": account["cash"]}, indent=2)
+        positions_str = json.dumps({**positions, "CASH": account["cash"]}, indent=2).replace("{", "{{").replace("}", "}}")
     except Exception as e:
         account = {"cash": 0, "equity": 0, "buying_power": 0}
         positions_str = f"Error fetching from Alpaca: {e}"
