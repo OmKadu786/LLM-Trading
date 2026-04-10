@@ -1,8 +1,19 @@
-langchain==1.0.2
-langchain-openai==1.0.1
-langchain-mcp-adapters>=0.1.0
-fastmcp==2.12.5
+# Core Orchestration
+langchain>=0.1.0
+langchain-core>=0.1.0
+langchain-openai>=0.1.0
 
-# A_stock
+# Model Context Protocol
+langchain-mcp-adapters>=0.1.0
+fastmcp>=2.12.5
+
+# Brokerage & Execution
+alpaca-py>=0.21.0
+requests>=2.28.0
+
+# Configuration
+python-dotenv>=1.0.0
+
+# A_stock (Optional)
 tushare
 efinance
