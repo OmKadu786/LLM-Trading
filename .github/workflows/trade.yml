@@ -1,0 +1,53 @@
+name: AI-Trader Live Session
+
+on:
+  schedule:
+    # Run every hour during US market hours (9 AM - 5 PM ET)
+    # ET = UTC-4 (summer) / UTC-5 (winter), so cover 13:00-21:00 UTC
+    - cron: '0 13-21 * * 1-5'  # Mon-Fri, every hour on the hour
+  workflow_dispatch:  # Manual trigger button on GitHub
+
+jobs:
+  trade:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+          cache: 'pip'
+
+      - name: Install dependencies
+        run: pip install -r requirements.txt
+
+      - name: Write .env from secrets
+        run: |
+          cat <<EOF > .env
+          OPENAI_API_BASE=${{ secrets.OPENAI_API_BASE }}
+          OPENAI_API_KEY=${{ secrets.OPENAI_API_KEY }}
+          JINA_API_KEY=${{ secrets.JINA_API_KEY }}
+          ALPACA_API_BASE_URL=${{ secrets.ALPACA_API_BASE_URL }}
+          ALPACA_API_KEY=${{ secrets.ALPACA_API_KEY }}
+          ALPACA_API_SECRET=${{ secrets.ALPACA_API_SECRET }}
+          LANGCHAIN_TRACING_V2=true
+          LANGCHAIN_PROJECT=AI-Trader-LoneWolf
+          LANGCHAIN_API_KEY=${{ secrets.LANGCHAIN_API_KEY }}
+          MATH_HTTP_PORT=8004
+          SEARCH_HTTP_PORT=8001
+          TRADE_HTTP_PORT=8002
+          AGENT_MAX_STEP=30
+          EOF
+
+      - name: Start MCP background services
+        run: |
+          python agent_tools/start_mcp_services.py &
+          echo "⏳ Waiting for MCP servers to boot..."
+          sleep 8
+
+      - name: Run single trading session
+        run: python main.py --once
