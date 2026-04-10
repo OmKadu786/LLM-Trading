@@ -108,8 +108,8 @@ class BaseAgent:
         sys_prompt = get_agent_system_prompt(today_date, self.signature, self.market)
         prompt = ChatPromptTemplate.from_messages([
             ("system", sys_prompt),
-            ("placeholder", "{agent_scratchpad}"),
-            ("user", "{input}")
+            ("user", "{input}"),
+            ("placeholder", "{agent_scratchpad}")
         ])
 
         # Create bulletproof Agent Executor
