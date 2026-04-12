@@ -26,19 +26,6 @@ def sell(symbol: str, amount: int) -> Dict[str, Any]:
     try: return get_alpaca_client().sell(symbol, amount)
     except Exception as e: return {"error": str(e)}
 
-@mcp.tool()
-def short_sell(symbol: str, amount: int, take_profit: float = None, stop_loss: float = None) -> Dict[str, Any]:
-    """Go Short: Bet against a stock. Args: symbol, amount, take_profit (floor price), stop_loss (ceiling price)."""
-    if amount <= 0: return {"error": f"Amount must be positive, got {amount}"}
-    try: return get_alpaca_client().short_sell(symbol, amount, take_profit=take_profit, stop_loss=stop_loss)
-    except Exception as e: return {"error": str(e)}
-
-@mcp.tool()
-def cover_short(symbol: str, amount: int) -> Dict[str, Any]:
-    """Cover Short: Buy back shares to close a previously opened short position."""
-    if amount <= 0: return {"error": f"Amount must be positive, got {amount}"}
-    try: return get_alpaca_client().cover_short(symbol, amount)
-    except Exception as e: return {"error": str(e)}
 
 # ── Price & Screener Tools ───────────────────────────────────────────────────────────────
 

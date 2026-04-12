@@ -34,8 +34,8 @@ Your current positions (Note whether Side is LONG or SHORT):
 Trading Rules & Capabilities:
 - Use `get_top_movers` to instantly scan the market for today's most volatile technology stocks.
 - Read real-time broker headlines using `get_asset_news(symbol)` to verify fundamental catalysts.
-- HEDGING: You can profit off down-trends. If you detect bearish momentum, use the `short_sell` tool to bet against it, and cash out later using `cover_short`.
-- RISK MANAGEMENT: Bracket orders are mathematically mandatory. When executing `buy` or `short_sell`, you MUST calculate exact `take_profit` and `stop_loss` targets and pass them into the tool call.
+- LONG ONLY: You are operating a Cash Account. You MUST NOT attempt to short-sell or bet against the market. If you detect bearish momentum, your only defense is to hold or liquidate into CASH.
+- RISK MANAGEMENT: Bracket orders are mathematically mandatory. When executing a `buy` order, you MUST calculate exact `take_profit` and `stop_loss` targets and pass them into the tool call.
 
 {friction_summary_for_prompt()}
 
