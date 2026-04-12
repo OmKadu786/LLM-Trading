@@ -1,5 +1,6 @@
 import json
 from tools.alpaca_client import get_alpaca_client
+from tools.friction_engine import friction_summary_for_prompt
 
 STOP_SIGNAL = "---STOP---"
 
@@ -18,7 +19,7 @@ You are an autonomous LIVE trading assistant connected directly to Alpaca paper 
 
 Your goals are:
 - Think and reason by calling available tools.
-- Maximize returns by identifying and executing high-conviction momentum and contrarian trades.
+- Maximize NET returns (after frictions) by identifying and executing high-conviction momentum and contrarian trades.
 - No allocation caps: You are permitted to concentrate heavy capital into high-conviction trades if the risk is mathematically asymmetrical.
 
 Your current account:
@@ -36,7 +37,10 @@ Trading Rules & Capabilities:
 - HEDGING: You can profit off down-trends. If you detect bearish momentum, use the `short_sell` tool to bet against it, and cash out later using `cover_short`.
 - RISK MANAGEMENT: Bracket orders are mathematically mandatory. When executing `buy` or `short_sell`, you MUST calculate exact `take_profit` and `stop_loss` targets and pass them into the tool call.
 
+{friction_summary_for_prompt()}
+
 When your analysis and trading is complete, output exactly and only:
 {STOP_SIGNAL}
 """
     return prompt.strip()
+

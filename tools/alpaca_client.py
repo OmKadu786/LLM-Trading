@@ -8,6 +8,7 @@ from alpaca.trading.enums import OrderSide, TimeInForce
 from alpaca.data.historical import StockHistoricalDataClient
 from alpaca.data.requests import StockLatestQuoteRequest, StockBarsRequest
 from alpaca.data.timeframe import TimeFrame
+from tools.friction_engine import calculate_friction
 
 load_dotenv()
 
@@ -60,15 +61,41 @@ class AlpacaClient:
             return None
 
     def _order(self, symbol: str, qty: int, side: OrderSide, take_profit: Optional[float] = None, stop_loss: Optional[float] = None) -> Dict[str, Any]:
+        # ── Friction Calculation ──────────────────────────────────────────────
+        # Fetch live price to compute friction on actual position value
+        raw_price = self.get_latest_price(symbol) or 0.0
+        friction_side = "buy" if side == OrderSide.BUY else "sell"
+        friction = calculate_friction(symbol, friction_side, qty, raw_price)
+        f = friction.to_dict()
+
+        print(f"\n💸 FRICTION [{symbol}] {friction_side.upper()} {qty} shares @ ${raw_price:.2f}")
+        print(f"   Slippage:   ${f['friction_breakdown']['slippage_$']:.4f}")
+        print(f"   Spread:     ${f['friction_breakdown']['spread_$']:.4f}")
+        print(f"   Latency:    ${f['friction_breakdown']['latency_$']:.4f}")
+        print(f"   SEC Fee:    ${f['friction_breakdown']['sec_fee_$']:.4f}")
+        print(f"   FINRA TAF:  ${f['friction_breakdown']['finra_taf_$']:.4f}")
+        print(f"   ─────────────────────────────────")
+        print(f"   TOTAL DRAG: ${f['total_friction_$']:.4f} ({f['total_friction_%']:.4f}%) | Tier: {f['liquidity_tier']}")
+        if f['partial_fill_risk_shares'] > 0:
+            print(f"   ⚠️  Partial fill risk: {f['partial_fill_risk_shares']} shares may not fill in live trading")
+
+        # ── Submit Order to Alpaca ────────────────────────────────────────────
         req_args = {"symbol": symbol, "qty": qty, "side": side, "time_in_force": TimeInForce.DAY}
         if take_profit:
             req_args["take_profit"] = TakeProfitRequest(limit_price=take_profit)
         if stop_loss:
             req_args["stop_loss"] = StopLossRequest(stop_price=stop_loss)
-            
+
         order = self.tc.submit_order(MarketOrderRequest(**req_args))
-        return {"id": str(order.id), "symbol": order.symbol, "qty": str(order.qty),
-                "side": side.value, "status": str(order.status), "submitted_at": str(order.submitted_at)}
+        return {
+            "id": str(order.id),
+            "symbol": order.symbol,
+            "qty": str(order.qty),
+            "side": side.value,
+            "status": str(order.status),
+            "submitted_at": str(order.submitted_at),
+            "friction": f,
+        }
 
     def buy(self, symbol: str, qty: int, take_profit: Optional[float] = None, stop_loss: Optional[float] = None) -> Dict[str, Any]:
         return self._order(symbol, qty, OrderSide.BUY, take_profit, stop_loss)
@@ -77,7 +104,7 @@ class AlpacaClient:
         return self._order(symbol, qty, OrderSide.SELL)
 
     def short_sell(self, symbol: str, qty: int, take_profit: Optional[float] = None, stop_loss: Optional[float] = None) -> Dict[str, Any]:
-        # Shorting is just triggering a SELL without owning it. Bracket constraints apply in reverse (TP is lower, SL is higher).
+        # Shorting is just triggering a SELL without owning it. Bracket constraints apply in reverse.
         return self._order(symbol, qty, OrderSide.SELL, take_profit, stop_loss)
 
     def cover_short(self, symbol: str, qty: int) -> Dict[str, Any]:
