@@ -4,7 +4,7 @@ from typing import Dict, Any, Optional, List
 from dotenv import load_dotenv
 from alpaca.trading.client import TradingClient
 from alpaca.trading.requests import MarketOrderRequest, TakeProfitRequest, StopLossRequest
-from alpaca.trading.enums import OrderSide, TimeInForce
+from alpaca.trading.enums import OrderSide, TimeInForce, OrderClass
 from alpaca.data.historical import StockHistoricalDataClient
 from alpaca.data.requests import StockLatestQuoteRequest, StockBarsRequest
 from alpaca.data.timeframe import TimeFrame
@@ -81,9 +81,9 @@ class AlpacaClient:
 
         # ── Submit Order to Alpaca ────────────────────────────────────────────
         req_args = {"symbol": symbol, "qty": qty, "side": side, "time_in_force": TimeInForce.DAY}
-        if take_profit:
+        if take_profit and stop_loss:
+            req_args["order_class"] = OrderClass.BRACKET
             req_args["take_profit"] = TakeProfitRequest(limit_price=take_profit)
-        if stop_loss:
             req_args["stop_loss"] = StopLossRequest(stop_price=stop_loss)
 
         order = self.tc.submit_order(MarketOrderRequest(**req_args))
