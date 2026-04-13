@@ -13,9 +13,10 @@ mcp = FastMCP("Alpaca")
 # ── Trade Tools ───────────────────────────────────────────────────────────────
 
 @mcp.tool()
-def buy(symbol: str, amount: int, take_profit: float = None, stop_loss: float = None) -> Dict[str, Any]:
-    """Go Long: Buy shares via Alpaca. Args: symbol (e.g. 'AAPL'), amount (positive int), take_profit (optional limit price), stop_loss (optional stop price)."""
+def buy(symbol: str, amount: int, take_profit: float, stop_loss: float) -> Dict[str, Any]:
+    """Go Long: Buy shares via Alpaca. Args: symbol (e.g. 'AAPL'), amount (positive int), take_profit (REQUIRED limit price), stop_loss (REQUIRED stop price)."""
     if amount <= 0: return {"error": f"Amount must be positive, got {amount}"}
+    if not take_profit or not stop_loss: return {"error": "Strict Mode: Both take_profit and stop_loss bounds MUST be provided."}
     try: return get_alpaca_client().buy(symbol, amount, take_profit=take_profit, stop_loss=stop_loss)
     except Exception as e: return {"error": str(e)}
 
