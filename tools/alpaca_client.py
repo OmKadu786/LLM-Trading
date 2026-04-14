@@ -103,6 +103,24 @@ class AlpacaClient:
     def sell(self, symbol: str, qty: int) -> Dict[str, Any]:
         return self._order(symbol, qty, OrderSide.SELL)
 
+    def close_position(self, symbol: str) -> Dict[str, Any]:
+        """Emergency Eject: Cancels all open brackets and liquidates the full position."""
+        try:
+            # ── Friction Logging ──────────────────────────────────────────────
+            pos = self.get_position(symbol)
+            qty = pos["qty"] if pos else 0
+            if qty > 0:
+                raw_price = self.get_latest_price(symbol) or 0.0
+                f = calculate_friction(symbol, "sell", qty, raw_price).to_dict()
+                print(f"\n💸 FRICTION (FORCE CLOSE) [{symbol}] SELL {qty} shares @ ${raw_price:.2f}")
+                print(f"   TOTAL DRAG: ${f['total_friction_$']:.4f} ({f['total_friction_%']:.4f}%)")
+            
+            # ── Execute Force Close ───────────────────────────────────────────
+            req = self.tc.close_position(symbol_or_asset_id=symbol)
+            return {"status": "success", "message": f"Successfully cancelled open brackets and liquidated full {symbol} position.", "order_details": str(req)}
+        except Exception as e:
+            return {"error": str(e)}
+
     def short_sell(self, symbol: str, qty: int, take_profit: Optional[float] = None, stop_loss: Optional[float] = None) -> Dict[str, Any]:
         # Shorting is just triggering a SELL without owning it. Bracket constraints apply in reverse.
         return self._order(symbol, qty, OrderSide.SELL, take_profit, stop_loss)

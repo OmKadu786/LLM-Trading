@@ -21,10 +21,9 @@ def buy(symbol: str, amount: int, take_profit: float, stop_loss: float) -> Dict[
     except Exception as e: return {"error": str(e)}
 
 @mcp.tool()
-def sell(symbol: str, amount: int) -> Dict[str, Any]:
-    """Sell/Close Long position shares. Amount must be positive int."""
-    if amount <= 0: return {"error": f"Amount must be positive, got {amount}"}
-    try: return get_alpaca_client().sell(symbol, amount)
+def close_position(symbol: str) -> Dict[str, Any]:
+    """Emergency Eject: Completely liquidate a specific open stock position at market price. This automatically shreds the existing Take Profit and Stop Loss brackets before selling."""
+    try: return get_alpaca_client().close_position(symbol)
     except Exception as e: return {"error": str(e)}
 
 
