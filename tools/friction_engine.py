@@ -80,17 +80,26 @@ LIQUIDITY_TIERS = {
 # Static symbol → tier map for the bot's core watchlist.
 # If a symbol isn't listed here, we fetch volume from Alpaca to classify dynamically.
 SYMBOL_TIER_MAP = {
-    # MEGA
+    # MEGA (>10M shares/day or huge liquidity)
     "AAPL": "MEGA", "MSFT": "MEGA", "NVDA": "MEGA", "TSLA": "MEGA",
-    "AMZN": "MEGA", "META": "MEGA", "GOOG":  "MEGA", "GOOGL":"MEGA",
-    # LARGE
-    "AMD":  "LARGE", "NFLX": "LARGE", "PLTR": "LARGE", "INTC": "LARGE",
-    "CRM":  "LARGE", "PYPL": "LARGE", "UBER": "LARGE", "SQ":   "LARGE",
-    "SPOT": "LARGE", "SHOP": "LARGE",
+    "AMZN": "MEGA", "META": "MEGA", "GOOG": "MEGA", "GOOGL": "MEGA",
+    "AMD": "MEGA", "INTC": "MEGA", "BAC": "MEGA", "F": "MEGA",
+    "T": "MEGA", "CSCO": "MEGA", "VZ": "MEGA", "PFE": "MEGA",
+    # LARGE (Top 50 S&P 500 & consistent big movers)
+    "NFLX": "LARGE", "PLTR": "LARGE", "CRM": "LARGE", "PYPL": "LARGE",
+    "UBER": "LARGE", "SQ": "LARGE", "SPOT": "LARGE", "SHOP": "LARGE",
+    "LLY": "LARGE", "AVGO": "LARGE", "JPM": "LARGE", "UNH": "LARGE",
+    "V": "LARGE", "XOM": "LARGE", "MA": "LARGE", "JNJ": "LARGE",
+    "PG": "LARGE", "HD": "LARGE", "COST": "LARGE", "MRK": "LARGE",
+    "ABBV": "LARGE", "CVX": "LARGE", "PEP": "LARGE", "WMT": "LARGE",
+    "MCD": "LARGE", "LIN": "LARGE", "ADBE": "LARGE", "ACN": "LARGE",
+    "DIS": "LARGE", "ABT": "LARGE", "INTU": "LARGE", "WFC": "LARGE",
+    "IBM": "LARGE", "CMCSA": "LARGE", "QCOM": "LARGE", "CAT": "LARGE",
+    "TXN": "LARGE", "NKE": "LARGE", "BA": "LARGE", "GE": "LARGE",
     # MID
-    "SMCI": "MID", "COIN": "MID", "ARM":  "MID", "MSTR":  "MID",
-    "AVGO": "MID", "HOOD": "MID", "RBLX": "MID", "RIVN":  "MID",
-    "LCID": "MID", "PLUG": "MID",
+    "SMCI": "MID", "COIN": "MID", "ARM": "MID", "MSTR": "MID",
+    "HOOD": "MID", "RBLX": "MID", "RIVN": "MID", "LCID": "MID",
+    "PLUG": "MID",
 }
 
 

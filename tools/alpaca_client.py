@@ -144,8 +144,8 @@ class AlpacaClient:
                  "low": float(b.low), "close": float(b.close), "volume": int(b.volume)} for b in bars[symbol]]
 
     def get_market_movers(self) -> Dict[str, Any]:
-        # Use popular high volatility tech identifiers as a focused screener
-        symbols = "AAPL,MSFT,NVDA,TSLA,AMD,AMZN,META,GOOG,NFLX,COIN,MSTR,PLTR,SMCI,ARM,AVGO"
+        # Top 50 major US Equities by Market Cap / Volatility (Core S&P 500 + Crypto Proxies)
+        symbols = "AAPL,MSFT,NVDA,AMZN,META,GOOG,GOOGL,TSLA,LLY,AVGO,JPM,UNH,V,XOM,MA,JNJ,PG,HD,COST,MRK,ABBV,CRM,BAC,KO,CVX,NFLX,PEP,TMO,WMT,MCD,LIN,ADBE,ACN,DIS,CSCO,ABT,AMD,INTU,WFC,IBM,CMCSA,QCOM,PM,GE,INTC,CAT,TXN,SMCI,MSTR,COIN,PLTR,ARM"
         url = f"{self.data_url}/v2/stocks/snapshots?symbols={symbols}"
         resp = requests.get(url, headers=self._headers())
         if resp.status_code != 200:
