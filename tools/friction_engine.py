@@ -252,12 +252,12 @@ DYNAMIC COSTS (by stock liquidity tier — applied automatically):
   SMALL   | Any thinly traded stock    |  0.20%   | 0.36%  | ~0.350%/trade
 
 MINIMUM PROFIT THRESHOLD RULE:
-  You MUST NOT enter a trade unless your projected gain is at LEAST 2× the
+  You MUST NOT enter a trade unless your projected gain is at LEAST 1.5× the
   friction cost for that stock's tier. Below this threshold, you are trading
   for the broker's benefit, not yours.
 
   MID-tier example (SMCI at $25): friction ≈ $0.60 per $500 position.
-  You need a price move of at least $0.16/share before this trade breaks even.
+  You need a price move of at least $0.12/share before this trade breaks even.
 
 PARTIAL FILL RISK (live environment only — paper fills 100%):
   MID/SMALL stocks may partially fill in volatile conditions.

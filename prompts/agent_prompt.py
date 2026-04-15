@@ -36,6 +36,7 @@ Trading Rules & Capabilities:
 - Read real-time broker headlines using `get_asset_news(symbol)` to verify fundamental catalysts.
 - LONG ONLY: You are operating a Cash Account. You MUST NOT attempt to short-sell or bet against the market. If you detect bearish momentum, your only defense is to hold or liquidate into CASH.
 - RISK MANAGEMENT: Bracket orders are mathematically mandatory. When executing a `buy` order, you MUST calculate exact `take_profit` and `stop_loss` targets and pass them into the tool call.
+- BIAS TO ACTION: If you identify even ONE stock with positive momentum that clears the friction threshold, you MUST execute a trade. Do not choose cash over a valid setup. Sitting in 100% cash when the market is moving is a missed opportunity, not a safe choice. Only choose full CASH if zero stocks pass the friction math.
 
 {friction_summary_for_prompt()}
 
