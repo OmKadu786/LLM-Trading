@@ -26,6 +26,14 @@ def close_position(symbol: str) -> Dict[str, Any]:
     try: return get_alpaca_client().close_position(symbol)
     except Exception as e: return {"error": str(e)}
 
+@mcp.tool()
+def update_brackets(symbol: str, new_stop_loss: float = None, new_take_profit: float = None) -> Dict[str, Any]:
+    """Trail Profits: Update stop-loss and/or take-profit on an existing position's bracket orders. Use this to LOCK IN GAINS by raising the stop-loss closer to the current price when a trade is significantly profitable. Example: bought at $100, stop was $97, price is now $110 → raise stop to $107 to guarantee +$7/share profit. You may also widen take-profit if momentum is extremely strong."""
+    if not new_stop_loss and not new_take_profit:
+        return {"error": "Must provide at least one of new_stop_loss or new_take_profit"}
+    try: return get_alpaca_client().update_brackets(symbol, new_stop_loss=new_stop_loss, new_take_profit=new_take_profit)
+    except Exception as e: return {"error": str(e)}
+
 
 # ── Price & Screener Tools ───────────────────────────────────────────────────────────────
 

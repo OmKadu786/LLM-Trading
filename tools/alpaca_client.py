@@ -121,6 +121,54 @@ class AlpacaClient:
         except Exception as e:
             return {"error": str(e)}
 
+    def update_brackets(self, symbol: str, new_stop_loss: Optional[float] = None, new_take_profit: Optional[float] = None) -> Dict[str, Any]:
+        """Update stop-loss and/or take-profit on existing bracket orders for a position."""
+        base = os.getenv("ALPACA_API_BASE_URL", "https://paper-api.alpaca.markets/v2")
+        headers = {"APCA-API-KEY-ID": self.key, "APCA-API-SECRET-KEY": self.secret}
+
+        # Get open orders for this symbol
+        resp = requests.get(f"{base}/orders", headers=headers, params={"status": "open", "symbols": symbol})
+        if resp.status_code != 200:
+            return {"error": f"Failed to fetch orders: {resp.text}"}
+
+        orders = resp.json()
+        results = {"symbol": symbol, "updates": []}
+
+        for order in orders:
+            order_type = order.get("type", "")
+            order_side = order.get("side", "")
+
+            # Stop-loss leg: type=stop, side=sell
+            if order_type == "stop" and order_side == "sell" and new_stop_loss is not None:
+                old_price = order.get("stop_price")
+                patch = requests.patch(
+                    f"{base}/orders/{order['id']}", headers=headers,
+                    json={"stop_price": str(new_stop_loss)}
+                )
+                if patch.status_code == 200:
+                    results["updates"].append({"type": "stop_loss", "old": old_price, "new": new_stop_loss, "status": "updated"})
+                    print(f"🔒 TRAIL [{symbol}] Stop-loss: ${old_price} → ${new_stop_loss}")
+                else:
+                    results["updates"].append({"type": "stop_loss", "error": patch.text})
+
+            # Take-profit leg: type=limit, side=sell
+            elif order_type == "limit" and order_side == "sell" and new_take_profit is not None:
+                old_price = order.get("limit_price")
+                patch = requests.patch(
+                    f"{base}/orders/{order['id']}", headers=headers,
+                    json={"limit_price": str(new_take_profit)}
+                )
+                if patch.status_code == 200:
+                    results["updates"].append({"type": "take_profit", "old": old_price, "new": new_take_profit, "status": "updated"})
+                    print(f"🎯 TRAIL [{symbol}] Take-profit: ${old_price} → ${new_take_profit}")
+                else:
+                    results["updates"].append({"type": "take_profit", "error": patch.text})
+
+        if not results["updates"]:
+            return {"error": f"No open bracket orders found for {symbol}. Consider using close_position and re-entering with new brackets."}
+
+        return results
+
     def short_sell(self, symbol: str, qty: int, take_profit: Optional[float] = None, stop_loss: Optional[float] = None) -> Dict[str, Any]:
         # Shorting is just triggering a SELL without owning it. Bracket constraints apply in reverse.
         return self._order(symbol, qty, OrderSide.SELL, take_profit, stop_loss)
