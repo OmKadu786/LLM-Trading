@@ -100,8 +100,83 @@ class BaseAgent:
         with open(log_file, "a", encoding="utf-8") as f:
             f.write(json.dumps(log_entry, ensure_ascii=False) + "\n")
 
+    def _auto_protect_winners(self) -> None:
+        """Hardcoded profit protection: place GTC trailing stops on all winning positions >2%.
+        Runs BEFORE the AI agent — cannot be skipped or ignored."""
+        try:
+            import requests
+            from tools.alpaca_client import get_alpaca_client
+            client = get_alpaca_client()
+            positions = client.get_positions()
+
+            # Get all existing open stop orders to avoid duplicates
+            base = os.getenv("ALPACA_API_BASE_URL", "https://paper-api.alpaca.markets/v2")
+            headers = {"APCA-API-KEY-ID": client.key, "APCA-API-SECRET-KEY": client.secret}
+            existing_stops = {}
+            try:
+                resp = requests.get(f"{base}/orders", headers=headers, params={"status": "open", "limit": 50})
+                if resp.status_code == 200:
+                    for o in resp.json():
+                        if o.get("type") == "stop" and o.get("side") == "sell":
+                            sym = o["symbol"]
+                            existing_stops[sym] = {"id": o["id"], "stop_price": float(o["stop_price"]), "qty": int(o["qty"])}
+            except Exception:
+                pass
+
+            for symbol, pos in positions.items():
+                if symbol == "CASH":
+                    continue
+                pnl_pct = pos.get("pnl_percent", 0)
+                unrealized = pos.get("unrealized_pnl", 0)
+                entry = pos.get("entry_price", 0)
+                current = pos.get("current_price", 0)
+                qty = int(pos.get("qty", 0))
+
+                if pnl_pct < 2.0 or unrealized < 50 or qty <= 0:
+                    continue
+
+                # Formula: lock in 50% of unrealized gain
+                gain_per_share = current - entry
+                stop_price = round(entry + (gain_per_share * 0.5), 2)
+
+                if stop_price >= current or stop_price <= entry:
+                    continue
+
+                # Check if a stop already exists for this symbol
+                if symbol in existing_stops:
+                    old_stop = existing_stops[symbol]["stop_price"]
+                    if stop_price <= old_stop:
+                        print(f"🔒 [{symbol}] Already protected @ ${old_stop:.2f} (≥ new ${stop_price:.2f}) — skipping")
+                        continue
+                    # New stop is higher — cancel old one first, then place new
+                    print(f"🔒 [{symbol}] Upgrading stop: ${old_stop:.2f} → ${stop_price:.2f}")
+                    try:
+                        requests.delete(f"{base}/orders/{existing_stops[symbol]['id']}", headers=headers)
+                    except Exception:
+                        pass
+
+                print(f"\n🔒 AUTO-PROTECT [{symbol}] {qty} shares | entry=${entry:.2f} | now=${current:.2f} | +{pnl_pct:.1f}%")
+                print(f"   Setting GTC stop @ ${stop_price:.2f} (locks in ${stop_price - entry:.2f}/share = ${(stop_price - entry) * qty:.2f} minimum profit)")
+
+                try:
+                    result = client.place_trailing_stop(symbol, stop_price, qty)
+                    if "error" in result:
+                        print(f"   ⚠️ Failed: {result['error']}")
+                    else:
+                        print(f"   ✅ Protected! Order ID: {result.get('order_id', 'unknown')}")
+                except Exception as e:
+                    print(f"   ⚠️ Error placing stop: {e}")
+
+        except Exception as e:
+            print(f"⚠️ Auto-protect failed (non-fatal): {e}")
+
     async def run_trading_session(self, today_date: str) -> None:
         print(f"📈 Starting trading session: {today_date}")
+
+        # ── STEP 0: Auto-protect winning positions BEFORE AI runs ─────────
+        print("\n🛡️ Running automatic profit protection scan...")
+        self._auto_protect_winners()
+
         log_file = self._setup_logging(today_date)
         
         # Build standard Langchain prompt structure for tools
