@@ -34,6 +34,12 @@ def update_brackets(symbol: str, new_stop_loss: float = None, new_take_profit: f
     try: return get_alpaca_client().update_brackets(symbol, new_stop_loss=new_stop_loss, new_take_profit=new_take_profit)
     except Exception as e: return {"error": str(e)}
 
+@mcp.tool()
+def place_trailing_stop(symbol: str, stop_price: float) -> Dict[str, Any]:
+    """Protect Profits: Place a new GTC (good-til-cancelled) stop-sell order on your ENTIRE position for a symbol. Use this when a position has large unrealized gains but NO active stop-loss orders protecting it. Unlike bracket stops, this order survives overnight and won't expire. This is the PRIMARY tool for locking in profits on existing winning positions."""
+    try: return get_alpaca_client().place_trailing_stop(symbol, stop_price)
+    except Exception as e: return {"error": str(e)}
+
 
 # ── Price & Screener Tools ───────────────────────────────────────────────────────────────
 

@@ -3,7 +3,7 @@ import requests
 from typing import Dict, Any, Optional, List
 from dotenv import load_dotenv
 from alpaca.trading.client import TradingClient
-from alpaca.trading.requests import MarketOrderRequest, TakeProfitRequest, StopLossRequest
+from alpaca.trading.requests import MarketOrderRequest, StopOrderRequest, LimitOrderRequest, TakeProfitRequest, StopLossRequest
 from alpaca.trading.enums import OrderSide, TimeInForce, OrderClass
 from alpaca.data.historical import StockHistoricalDataClient
 from alpaca.data.requests import StockLatestQuoteRequest, StockBarsRequest
@@ -168,6 +168,42 @@ class AlpacaClient:
             return {"error": f"No open bracket orders found for {symbol}. Consider using close_position and re-entering with new brackets."}
 
         return results
+
+    def place_trailing_stop(self, symbol: str, stop_price: float, qty: Optional[int] = None) -> Dict[str, Any]:
+        """Place a standalone stop-sell order on an existing position to lock in profits."""
+        try:
+            # If no qty given, protect the entire position
+            if qty is None:
+                pos = self.get_position(symbol)
+                if not pos:
+                    return {"error": f"No open position found for {symbol}"}
+                qty = pos["qty"]
+
+            raw_price = self.get_latest_price(symbol) or 0.0
+            if stop_price >= raw_price:
+                return {"error": f"Stop price ${stop_price} must be below current price ${raw_price}"}
+
+            order = self.tc.submit_order(
+                StopOrderRequest(
+                    symbol=symbol,
+                    qty=qty,
+                    side=OrderSide.SELL,
+                    time_in_force=TimeInForce.GTC,  # Good-til-cancelled — survives overnight!
+                    stop_price=stop_price,
+                )
+            )
+            print(f"\n🔒 TRAILING STOP [{symbol}] {qty} shares @ ${stop_price} (current: ${raw_price:.2f})")
+            return {
+                "status": "success",
+                "symbol": symbol,
+                "qty": qty,
+                "stop_price": stop_price,
+                "current_price": raw_price,
+                "protected_profit_per_share": round(stop_price - (self.get_position(symbol) or {}).get("avg_entry_price", 0), 2),
+                "order_id": str(order.id),
+            }
+        except Exception as e:
+            return {"error": str(e)}
 
     def short_sell(self, symbol: str, qty: int, take_profit: Optional[float] = None, stop_loss: Optional[float] = None) -> Dict[str, Any]:
         # Shorting is just triggering a SELL without owning it. Bracket constraints apply in reverse.

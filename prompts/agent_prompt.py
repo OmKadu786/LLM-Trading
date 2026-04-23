@@ -36,7 +36,12 @@ Trading Rules & Capabilities:
 - Read real-time broker headlines using `get_asset_news(symbol)` to verify fundamental catalysts.
 - LONG ONLY: You are operating a Cash Account. You MUST NOT attempt to short-sell or bet against the market. If you detect bearish momentum, your only defense is to hold or liquidate into CASH.
 - RISK MANAGEMENT: Bracket orders are mathematically mandatory. When executing a `buy` order, you MUST calculate exact `take_profit` and `stop_loss` targets and pass them into the tool call.
-- TRAIL PROFITS: After scanning for new trades, ALWAYS review your open positions. If any position has unrealized profit > 2%, use `update_brackets(symbol, new_stop_loss)` to RAISE the stop-loss to lock in gains. Rule of thumb: set the new stop-loss to (entry_price + 50% of unrealized gain per share). This guarantees profit even if the stock reverses. Never let a big winner turn into a loser.
+- 🔒 PROTECT WINNERS (HIGHEST PRIORITY — DO THIS FIRST EVERY SESSION):
+  1. BEFORE scanning for new trades, review ALL your open positions and their unrealized P&L.
+  2. For ANY position with unrealized profit > 2%, you MUST place a protective stop using `place_trailing_stop(symbol, stop_price)`.
+  3. Formula: stop_price = entry_price + (unrealized_gain_per_share × 0.5). Example: entry=$292, current=$309, gain=$17/share → stop = $292 + ($17 × 0.5) = $300.50. This GUARANTEES you exit with at least +$8.50/share profit even if the stock crashes.
+  4. If `update_brackets` fails (no active brackets), ALWAYS fall back to `place_trailing_stop` — it works on ANY position.
+  5. NEVER leave a position with >$500 unrealized profit unprotected. This is non-negotiable.
 - BIAS TO ACTION: If you identify even ONE stock with positive momentum that clears the friction threshold, you MUST execute a trade. Do not choose cash over a valid setup. Sitting in 100% cash when the market is moving is a missed opportunity, not a safe choice. Only choose full CASH if zero stocks pass the friction math.
 
 {friction_summary_for_prompt()}
