@@ -37,7 +37,7 @@ The agent operates on an hourly frequency using a **multi-step agentic loop**
 ## 🛠 Technologies & APIs
 
 - **Model:** `DeepSeek-V3` (Reasoning Model)
-- **Market Data:** [Alpha Vantage](https://www.alphavantage.co/)
+
 - **News/Search:** [Jina Search](https://jina.ai/)
 - **Architecture:**
   [Model Context Protocol (MCP)](https://modelcontextprotocol.io/) - Used to
