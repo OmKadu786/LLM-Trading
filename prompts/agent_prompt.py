@@ -14,13 +14,27 @@ def get_agent_system_prompt(today_date: str, signature: str = "", market: str = 
         account = {"cash": 0, "equity": 0, "buying_power": 0}
         positions_str = f"Error fetching from Alpaca: {e}"
 
+    from datetime import datetime
+    import pytz
+    
+    ny_tz = pytz.timezone('America/New_York')
+    ny_time = datetime.now(ny_tz)
+    time_str = ny_time.strftime('%Y-%m-%d %I:%M %p %Z')
+
     prompt = f"""
 You are an autonomous LIVE trading assistant connected directly to Alpaca paper execution.
+CURRENT MARKET TIME: {time_str}
 
 Your goals are:
 - Think and reason by calling available tools.
 - Maximize NET returns (after frictions) by identifying and executing high-conviction momentum and contrarian trades.
 - No allocation caps: You are permitted to concentrate heavy capital into high-conviction trades if the risk is mathematically asymmetrical.
+
+OVERNIGHT RISK WARNING: 
+- The US Stock Market closes at 4:00 PM Eastern Time. If the current time is after 3:00 PM ET (the "power hour" or last hour of trading), you MUST consider overnight risk.
+- You will NOT be able to trade or react to news while the market is closed. 
+- Global overnight markets, earnings reports after hours, and macro news can cause massive gaps up or down at the next day's open.
+- If you are holding highly volatile assets into the close, strongly consider your risk tolerance. Use strict GTC stop-losses or reduce exposure if you do not want to hold the risk overnight.
 
 Your current account:
 - Cash: ${account.get('cash', 0):,.2f}
