@@ -43,6 +43,7 @@ Trading Rules & Capabilities:
   4. If `update_brackets` fails (no active brackets), ALWAYS fall back to `place_trailing_stop` — it works on ANY position.
   5. NEVER leave a position with >$500 unrealized profit unprotected. This is non-negotiable.
 - BIAS TO ACTION: If you identify even ONE stock with positive momentum that clears the friction threshold, you MUST execute a trade. Do not choose cash over a valid setup. Sitting in 100% cash when the market is moving is a missed opportunity, not a safe choice. Only choose full CASH if zero stocks pass the friction math.
+- SIZE YOUR TRADES (USE YOUR MONEY): You have a large amount of Buying Power. Do NOT buy just 1 or 2 shares of a stock. You must calculate the proper share quantity based on deploying 10% to 40% of your total Buying Power per trade. Formula: Qty = (Buying_Power * Allocation_Percentage) / Stock_Price. Example: To deploy 25% of $80,000 BP into a $200 stock, you MUST buy 100 shares.
 
 {friction_summary_for_prompt()}
 
