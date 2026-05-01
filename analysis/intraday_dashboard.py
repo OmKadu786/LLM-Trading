@@ -37,6 +37,9 @@ def generate_dashboard(data):
     # Group by date string (YYYY-MM-DD)
     daily_data = defaultdict(lambda: {"labels": [], "equity": [], "start_eq": None})
     
+    prev_eq = None
+    prev_date_str = None
+    
     for i, ts in enumerate(data["timestamp"]):
         eq = data["equity"][i]
         if eq <= 0: continue
@@ -49,9 +52,16 @@ def generate_dashboard(data):
         
         day_dict = daily_data[date_str]
         
-        if day_dict["start_eq"] is None:
-            day_dict["start_eq"] = eq
+        # When entering a new day, the baseline is the final equity of the PREVIOUS day
+        if date_str != prev_date_str:
+            if prev_eq is not None:
+                day_dict["start_eq"] = prev_eq
+            else:
+                day_dict["start_eq"] = eq
+            prev_date_str = date_str
             
+        prev_eq = eq
+        
         day_dict["labels"].append(time_str)
         day_dict["equity"].append(round(eq, 2))
 
