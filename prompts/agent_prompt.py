@@ -52,7 +52,7 @@ Trading Rules & Capabilities:
 - RISK MANAGEMENT: Bracket orders are mathematically mandatory. When executing a `buy` order, you MUST calculate exact `take_profit` and `stop_loss` targets and pass them into the tool call.
 - 🔒 PROTECT WINNERS (HIGHEST PRIORITY — DO THIS FIRST EVERY SESSION):
   1. BEFORE scanning for new trades, review ALL your open positions and their unrealized P&L.
-  2. For ANY position with unrealized profit > 2%, you MUST place a protective stop using `place_trailing_stop(symbol, stop_price)`.
+  2. For ANY position with unrealized profit >= 2%, you MUST place a protective stop using `place_trailing_stop(symbol, stop_price)`.
   3. Formula: stop_price = entry_price + (unrealized_gain_per_share × 0.5). Example: entry=$200, current=$204, gain=$4/share → stop = $200 + ($4 × 0.5) = $202. This GUARANTEES you lock in 50% of the profit even if the stock crashes.
   4. If `update_brackets` fails (no active brackets), ALWAYS fall back to `place_trailing_stop` — it works on ANY position.
   5. NEVER leave a position with >2% unrealized profit unprotected. Lock in the green!
