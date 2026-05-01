@@ -24,15 +24,26 @@ def get_monthly_intraday_data():
     
     r = requests.get(f"{BASE}/account/portfolio/history", headers=HEADERS, params=params)
     if r.status_code != 200:
-        print(f"❌ Error fetching data: {r.text}")
-        return None
+        print(f"❌ Error fetching intraday data: {r.text}")
+        return None, None
         
-    return r.json()
+    r_daily = requests.get(f"{BASE}/account/portfolio/history", headers=HEADERS, params={"period": "1M", "timeframe": "1D"})
+    daily_data = r_daily.json() if r_daily.status_code == 200 else {}
+        
+    return r.json(), daily_data
 
-def generate_dashboard(data):
+def generate_dashboard(data, daily_baseline_data):
     if not data or "timestamp" not in data or not data["timestamp"]:
         print("⚠️ No data available.")
         return
+
+    # Create a map of official daily baselines (Previous Close)
+    official_baselines = {}
+    if daily_baseline_data and "timestamp" in daily_baseline_data:
+        for ts, eq in zip(daily_baseline_data["timestamp"], daily_baseline_data["equity"]):
+            dt = datetime.fromtimestamp(ts, tz=timezone.utc)
+            date_str = dt.astimezone().strftime("%Y-%m-%d")
+            official_baselines[date_str] = eq
 
     # Group by date string (YYYY-MM-DD)
     daily_data = defaultdict(lambda: {"labels": [], "equity": [], "start_eq": None})
@@ -52,15 +63,9 @@ def generate_dashboard(data):
         
         day_dict = daily_data[date_str]
         
-        # When entering a new day, the baseline is the final equity of the PREVIOUS day
-        if date_str != prev_date_str:
-            if prev_eq is not None:
-                day_dict["start_eq"] = prev_eq
-            else:
-                day_dict["start_eq"] = eq
-            prev_date_str = date_str
-            
-        prev_eq = eq
+        # Set the baseline to Alpaca's official previous close if available
+        if day_dict["start_eq"] is None:
+            day_dict["start_eq"] = official_baselines.get(date_str, eq)
         
         day_dict["labels"].append(time_str)
         day_dict["equity"].append(round(eq, 2))
@@ -264,6 +269,6 @@ def generate_dashboard(data):
     webbrowser.open(f"file://{out_path}")
 
 if __name__ == "__main__":
-    data = get_monthly_intraday_data()
+    data, daily_data = get_monthly_intraday_data()
     if data:
-        generate_dashboard(data)
+        generate_dashboard(data, daily_data)
