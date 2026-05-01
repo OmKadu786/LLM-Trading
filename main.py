@@ -19,7 +19,12 @@ async def run_live_session():
     now = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
 
     try:
-        acct = get_alpaca_client().get_account()
+        alpaca = get_alpaca_client()
+        acct = alpaca.get_account()
+        if acct.get("daily_pnl_percent", 0) >= 2.0:
+            print(f"🎉 TARGET HIT: Daily profit is {acct['daily_pnl_percent']:.2f}% (>= 2%). Liquidating and stopping for the day.")
+            alpaca.tc.close_all_positions(cancel_orders=True)
+            return
     except Exception as e:
         print(f"❌ Alpaca connection failed: {e}")
         return
@@ -72,6 +77,6 @@ if __name__ == "__main__":
     import argparse
     p = argparse.ArgumentParser()
     p.add_argument("--once", action="store_true", help="Run once and exit")
-    p.add_argument("--interval", type=int, default=60, help="Interval in minutes between runs")
+    p.add_argument("--interval", type=int, default=15, help="Interval in minutes between runs")
     args = p.parse_args()
     asyncio.run(run_live_session() if args.once else run_loop(args.interval))
