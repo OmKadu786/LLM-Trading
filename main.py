@@ -9,6 +9,53 @@ sys.path.insert(0, str(project_root))
 
 from agent.base_agent.base_agent import BaseAgent
 from tools.alpaca_client import get_alpaca_client
+import requests
+
+LIQUIDATED_TODAY_DATE = None
+
+async def monitor_target():
+    global LIQUIDATED_TODAY_DATE
+    print("🎯 Live target monitor active (Checking every 5s)")
+    
+    while True:
+        try:
+            alpaca = get_alpaca_client()
+            clock = alpaca.tc.get_clock()
+            today_str = datetime.now().strftime("%Y-%m-%d")
+            
+            if not clock.is_open or LIQUIDATED_TODAY_DATE == today_str:
+                await asyncio.sleep(60)
+                continue
+                
+            a = alpaca.tc.get_account()
+            last_eq = float(a.last_equity)
+            curr_eq = float(a.equity)
+            daily_pnl_pct = ((curr_eq / last_eq) - 1) * 100 if last_eq > 0 else 0
+            
+            target_pct = 1.5
+            r = requests.get(
+                "https://paper-api.alpaca.markets/v2/account/portfolio/history",
+                headers={"APCA-API-KEY-ID": os.getenv("ALPACA_API_KEY"), "APCA-API-SECRET-KEY": os.getenv("ALPACA_API_SECRET")},
+                params={"period": "1D", "timeframe": "1Min"}
+            )
+            if r.status_code == 200:
+                hist = r.json()
+                if hist.get("equity") and len(hist["equity"]) > 0:
+                    today_open = float(hist["equity"][0])
+                    if last_eq > today_open:
+                        gap_down_pct = ((last_eq - today_open) / last_eq) * 100
+                        target_pct = 1.5 - gap_down_pct
+                        
+            if daily_pnl_pct >= target_pct:
+                print(f"\n🚨 INSTANT TARGET HIT: PnL is {daily_pnl_pct:.2f}%. Target was {target_pct:.2f}%. Liquidating ALL positions instantly!")
+                alpaca.tc.close_all_positions(cancel_orders=True)
+                LIQUIDATED_TODAY_DATE = today_str
+                
+        except Exception as e:
+            pass
+            
+        await asyncio.sleep(5)
+
 
 
 async def run_live_session():
@@ -18,13 +65,14 @@ async def run_live_session():
     acfg = config.get("agent_config", {})
     now = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
 
+    global LIQUIDATED_TODAY_DATE
+    if LIQUIDATED_TODAY_DATE == datetime.now().strftime("%Y-%m-%d"):
+        print("🛑 Session skipped. Target was already hit today.")
+        return
+
     try:
         alpaca = get_alpaca_client()
         acct = alpaca.get_account()
-        if acct.get("daily_pnl_percent", 0) >= 2.0:
-            print(f"🎉 TARGET HIT: Daily profit is {acct['daily_pnl_percent']:.2f}% (>= 2%). Liquidating and stopping for the day.")
-            alpaca.tc.close_all_positions(cancel_orders=True)
-            return
     except Exception as e:
         print(f"❌ Alpaca connection failed: {e}")
         return
@@ -79,4 +127,12 @@ if __name__ == "__main__":
     p.add_argument("--once", action="store_true", help="Run once and exit")
     p.add_argument("--interval", type=int, default=15, help="Interval in minutes between runs")
     args = p.parse_args()
-    asyncio.run(run_live_session() if args.once else run_loop(args.interval))
+    
+    async def main_runner():
+        asyncio.create_task(monitor_target())
+        if args.once:
+            await run_live_session()
+        else:
+            await run_loop(args.interval)
+
+    asyncio.run(main_runner())
