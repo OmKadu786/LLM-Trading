@@ -125,7 +125,7 @@ if __name__ == "__main__":
     import argparse
     p = argparse.ArgumentParser()
     p.add_argument("--once", action="store_true", help="Run once and exit")
-    p.add_argument("--interval", type=int, default=15, help="Interval in minutes between runs")
+    p.add_argument("--interval", type=int, default=60, help="Interval in minutes between runs")
     args = p.parse_args()
     
     async def main_runner():
