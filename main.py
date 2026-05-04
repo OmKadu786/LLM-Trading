@@ -32,7 +32,7 @@ async def monitor_target():
             curr_eq = float(a.equity)
             daily_pnl_pct = ((curr_eq / last_eq) - 1) * 100 if last_eq > 0 else 0
             
-            target_pct = 1.75
+            target_pct = 0.55
             r = requests.get(
                 "https://paper-api.alpaca.markets/v2/account/portfolio/history",
                 headers={"APCA-API-KEY-ID": os.getenv("ALPACA_API_KEY"), "APCA-API-SECRET-KEY": os.getenv("ALPACA_API_SECRET")},
@@ -44,7 +44,7 @@ async def monitor_target():
                     today_open = float(hist["equity"][0])
                     if last_eq > today_open:
                         gap_down_pct = ((last_eq - today_open) / last_eq) * 100
-                        target_pct = 1.75 - gap_down_pct
+                        target_pct = 0.55 - gap_down_pct
                         
             if daily_pnl_pct >= target_pct:
                 print(f"\n🚨 INSTANT TARGET HIT: PnL is {daily_pnl_pct:.2f}%. Target was {target_pct:.2f}%. Liquidating ALL positions instantly!")
