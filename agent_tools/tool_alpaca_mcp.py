@@ -44,8 +44,8 @@ def place_trailing_stop(symbol: str, stop_price: float) -> Dict[str, Any]:
 # ── Price & Screener Tools ───────────────────────────────────────────────────────────────
 
 @mcp.tool()
-def get_top_movers() -> Dict[str, Any]:
-    """Market Scanner: Returns today's top gainers and top losers among major tech and crypto-proxies to identify heavy momentum."""
+def get_market_scanner() -> Dict[str, Any]:
+    """Market Scanner: Returns price and daily % change for ALL 50 tracked tech and crypto proxy stocks, sorted by momentum. Use this to find stable stocks, diversified setups, or high momentum plays."""
     try: return get_alpaca_client().get_market_movers()
     except Exception as e: return {"error": str(e)}
 

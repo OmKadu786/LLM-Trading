@@ -245,7 +245,7 @@ class AlpacaClient:
                 stats.append({"symbol": sym, "change_percent": perc, "price": c})
         
         stats.sort(key=lambda x: x["change_percent"], reverse=True)
-        return {"top_gainers": stats[:5], "top_losers": stats[-5:]}
+        return {"all_tracked_stocks": stats}
 
     def get_news(self, symbol: str, limit: int = 5) -> List[Dict[str, Any]]:
         url = f"{self.data_url}/v1beta1/news?symbols={symbol}&limit={limit}"
