@@ -13,6 +13,39 @@ import requests
 
 LIQUIDATED_TODAY_DATE = None
 
+def check_target_sync() -> bool:
+    """Synchronous version of target checker for GitHub Actions intervals"""
+    try:
+        alpaca = get_alpaca_client()
+        a = alpaca.tc.get_account()
+        last_eq = float(a.last_equity)
+        curr_eq = float(a.equity)
+        daily_pnl_pct = ((curr_eq / last_eq) - 1) * 100 if last_eq > 0 else 0
+        
+        target_pct = 0.55
+        r = requests.get(
+            "https://paper-api.alpaca.markets/v2/account/portfolio/history",
+            headers={"APCA-API-KEY-ID": os.getenv("ALPACA_API_KEY"), "APCA-API-SECRET-KEY": os.getenv("ALPACA_API_SECRET")},
+            params={"period": "1D", "timeframe": "1Min"}
+        )
+        if r.status_code == 200:
+            hist = r.json()
+            if hist.get("equity") and len(hist["equity"]) > 0:
+                today_open = float(hist["equity"][0])
+                if last_eq > today_open:
+                    gap_down_pct = ((last_eq - today_open) / last_eq) * 100
+                    target_pct = 0.55 - gap_down_pct
+                    
+        print(f"📊 Target Check: Current PnL {daily_pnl_pct:.2f}% / Target {target_pct:.2f}%")
+        if daily_pnl_pct >= target_pct:
+            print(f"\n🚨 INSTANT TARGET HIT: PnL is {daily_pnl_pct:.2f}%. Target was {target_pct:.2f}%. Liquidating ALL positions instantly!")
+            alpaca.tc.close_all_positions(cancel_orders=True)
+            return True
+        return False
+    except Exception as e:
+        print(f"Target check failed: {e}")
+        return False
+
 async def monitor_target():
     global LIQUIDATED_TODAY_DATE
     print("🎯 Live target monitor active (Checking every 5s)")
@@ -27,28 +60,7 @@ async def monitor_target():
                 await asyncio.sleep(60)
                 continue
                 
-            a = alpaca.tc.get_account()
-            last_eq = float(a.last_equity)
-            curr_eq = float(a.equity)
-            daily_pnl_pct = ((curr_eq / last_eq) - 1) * 100 if last_eq > 0 else 0
-            
-            target_pct = 0.55
-            r = requests.get(
-                "https://paper-api.alpaca.markets/v2/account/portfolio/history",
-                headers={"APCA-API-KEY-ID": os.getenv("ALPACA_API_KEY"), "APCA-API-SECRET-KEY": os.getenv("ALPACA_API_SECRET")},
-                params={"period": "1D", "timeframe": "1Min"}
-            )
-            if r.status_code == 200:
-                hist = r.json()
-                if hist.get("equity") and len(hist["equity"]) > 0:
-                    today_open = float(hist["equity"][0])
-                    if last_eq > today_open:
-                        gap_down_pct = ((last_eq - today_open) / last_eq) * 100
-                        target_pct = 0.55 - gap_down_pct
-                        
-            if daily_pnl_pct >= target_pct:
-                print(f"\n🚨 INSTANT TARGET HIT: PnL is {daily_pnl_pct:.2f}%. Target was {target_pct:.2f}%. Liquidating ALL positions instantly!")
-                alpaca.tc.close_all_positions(cancel_orders=True)
+            if check_target_sync():
                 LIQUIDATED_TODAY_DATE = today_str
                 
         except Exception as e:
@@ -125,14 +137,29 @@ if __name__ == "__main__":
     import argparse
     p = argparse.ArgumentParser()
     p.add_argument("--once", action="store_true", help="Run once and exit")
+    p.add_argument("--cron", action="store_true", help="Run GitHub Actions cron interval logic")
     p.add_argument("--interval", type=int, default=60, help="Interval in minutes between runs")
     args = p.parse_args()
     
     async def main_runner():
-        asyncio.create_task(monitor_target())
-        if args.once:
+        if args.cron:
+            print("🕒 Running GitHub Actions Cron Check...")
+            hit_target = check_target_sync()
+            if hit_target:
+                print("🎯 Target already hit! Exiting.")
+                return
+            
+            # If we are within the first 10 minutes of the hour (e.g. 9:00, 10:00)
+            if datetime.now().minute < 10:
+                print("⏰ Top of the hour! Running full AI trading session...")
+                await run_live_session()
+            else:
+                print("⏸️ Mid-hour interval (15/30/45). Checked target, no trades needed. Exiting.")
+        elif args.once:
+            asyncio.create_task(monitor_target())
             await run_live_session()
         else:
+            asyncio.create_task(monitor_target())
             await run_loop(args.interval)
 
     asyncio.run(main_runner())
