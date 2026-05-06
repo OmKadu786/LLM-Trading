@@ -22,7 +22,7 @@ def check_target_sync() -> bool:
         curr_eq = float(a.equity)
         daily_pnl_pct = ((curr_eq / last_eq) - 1) * 100 if last_eq > 0 else 0
         
-        target_pct = 1.0
+        target_pct = 0.66
         r = requests.get(
             "https://paper-api.alpaca.markets/v2/account/portfolio/history",
             headers={"APCA-API-KEY-ID": os.getenv("ALPACA_API_KEY"), "APCA-API-SECRET-KEY": os.getenv("ALPACA_API_SECRET")},
@@ -34,7 +34,7 @@ def check_target_sync() -> bool:
                 today_open = float(hist["equity"][0])
                 if last_eq > today_open:
                     gap_down_pct = ((last_eq - today_open) / last_eq) * 100
-                    target_pct = 1.0 - gap_down_pct
+                    target_pct = 0.66 - gap_down_pct
                     
         print(f"📊 Target Check: Current PnL {daily_pnl_pct:.2f}% / Target {target_pct:.2f}%")
         if daily_pnl_pct >= target_pct:
