@@ -46,7 +46,7 @@ Your current positions (Note whether Side is LONG or SHORT):
 {positions_str}
 
 Trading Rules & Capabilities:
-- Use `get_market_scanner` to scan our entire 50-stock universe. You are not forced to only trade the biggest movers; choose the highest probability path to +0.66%.
+- Use `get_market_scanner` to scan our strictly Mega-Cap universe. You are not forced to only trade the biggest movers; choose the highest probability path to +0.66%.
 - Read real-time broker headlines using `get_asset_news(symbol)` to verify fundamental catalysts.
 - LONG ONLY: You are operating a Cash Account. You MUST NOT attempt to short-sell or bet against the market. If you detect bearish momentum, your only defense is to hold or liquidate into CASH.
 - RISK MANAGEMENT: Bracket orders are mathematically mandatory. When executing a `buy` order, you MUST calculate exact `take_profit` and `stop_loss` targets and pass them into the tool call.
