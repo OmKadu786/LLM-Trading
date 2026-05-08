@@ -137,24 +137,24 @@ if __name__ == "__main__":
     import argparse
     p = argparse.ArgumentParser()
     p.add_argument("--once", action="store_true", help="Run once and exit")
-    p.add_argument("--cron", action="store_true", help="Run GitHub Actions cron interval logic")
+    p.add_argument("--cron-hourly", action="store_true", help="Run full trading session")
+    p.add_argument("--cron-check", action="store_true", help="Run target monitor only")
     p.add_argument("--interval", type=int, default=60, help="Interval in minutes between runs")
     args = p.parse_args()
     
     async def main_runner():
-        if args.cron:
-            print("🕒 Running GitHub Actions Cron Check...")
+        if args.cron_hourly or args.cron_check:
+            print("🕒 Running GitHub Actions Check...")
             hit_target = check_target_sync()
             if hit_target:
                 print("🎯 Target already hit! Exiting.")
                 return
             
-            # If we are within the first 10 minutes of the hour (e.g. 9:00, 10:00)
-            if datetime.now().minute < 10:
-                print("⏰ Top of the hour! Running full AI trading session...")
+            if args.cron_hourly:
+                print("⏰ Running full AI trading session...")
                 await run_live_session()
             else:
-                print("⏸️ Mid-hour interval (15/30/45). Checked target, no trades needed. Exiting.")
+                print("⏸️ Mid-hour interval. Checked target, no trades needed. Exiting.")
         elif args.once:
             asyncio.create_task(monitor_target())
             await run_live_session()
