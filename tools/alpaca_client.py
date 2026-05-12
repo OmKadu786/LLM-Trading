@@ -229,9 +229,9 @@ class AlpacaClient:
 
     def get_market_movers(self) -> Dict[str, Any]:
         # Top 50 major US Equities by Market Cap / Volatility (Core S&P 500 + Crypto Proxies)
-        # Strictly Mega-Cap universe (> $150B Market Cap). 
+        # Strictly Top 12 Mega-Cap universe (Magnificent 7 + top leaders). 
         # Volatile proxies (MSTR, SMCI, COIN, PLTR, ARM) are BANNED to eliminate spread friction.
-        symbols = "AAPL,MSFT,NVDA,AMZN,META,GOOG,GOOGL,TSLA,LLY,AVGO,JPM,UNH,V,XOM,MA,JNJ,PG,HD,COST,MRK,ABBV,CRM,BAC,KO,CVX,NFLX,PEP,TMO,WMT,MCD,LIN,ADBE,ACN,DIS,CSCO,ABT,AMD,INTU,WFC,IBM,CMCSA,QCOM,PM,GE,INTC,CAT,TXN"
+        symbols = "AAPL,MSFT,NVDA,AMZN,META,GOOG,GOOGL,TSLA,LLY,AVGO,JPM,V"
         url = f"{self.data_url}/v2/stocks/snapshots?symbols={symbols}"
         resp = requests.get(url, headers=self._headers())
         if resp.status_code != 200:
