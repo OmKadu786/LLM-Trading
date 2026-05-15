@@ -23,14 +23,6 @@ def check_target_sync() -> bool:
         clock = alpaca.tc.get_clock()
         if not clock.is_open:
             return False
-            
-        # --- 3:45 PM HARD STOP RULE ---
-        et_tz = pytz.timezone('US/Eastern')
-        now_et = datetime.now(et_tz)
-        if now_et.hour == 15 and now_et.minute >= 45:
-            print("🛑 [HARD STOP] It is 3:45 PM ET. Liquidating all positions to prevent overnight holds!")
-            alpaca.tc.close_all_positions(cancel_orders=True)
-            return True
 
         a = alpaca.tc.get_account()
         last_eq = float(a.last_equity)
