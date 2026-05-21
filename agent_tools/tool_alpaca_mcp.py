@@ -68,13 +68,16 @@ def get_price_history(symbol: str) -> Dict[str, Any]:
     """Get market momentum data: the last 7 days of Daily bars, and the last 2 days of 15-Minute intraday bars (Open, High, Low, Close, Volume)."""
     try:
         client = get_alpaca_client()
-        daily_bars = client.get_bars(symbol, timeframe="1Day", limit=7)
-        last_7_days = [{"date": b["timestamp"].split(" ")[0], "open": b["open"], "high": b["high"], "low": b["low"], "close": b["close"], "volume": b["volume"]} for b in daily_bars]
+        daily_bars = client.get_bars(symbol, timeframe="1Day", limit=50)
+        last_50_days = [{"date": b["timestamp"].split(" ")[0], "open": b["open"], "high": b["high"], "low": b["low"], "close": b["close"], "volume": b["volume"]} for b in daily_bars]
         
-        intraday_bars = client.get_bars(symbol, timeframe="15Min", limit=40)
+        hourly_bars = client.get_bars(symbol, timeframe="1Hour", limit=50)
+        last_50_hours = [{"time": b["timestamp"], "open": b["open"], "high": b["high"], "low": b["low"], "close": b["close"], "volume": b["volume"]} for b in hourly_bars]
+        
+        intraday_bars = client.get_bars(symbol, timeframe="15Min", limit=10)
         recent_15m = [{"time": b["timestamp"], "open": b["open"], "high": b["high"], "low": b["low"], "close": b["close"], "volume": b["volume"]} for b in intraday_bars]
 
-        return {"symbol": symbol, "daily_trend_7_days": last_7_days, "intraday_15min_bars": recent_15m}
+        return {"symbol": symbol, "daily_50_bars": last_50_days, "hourly_50_bars": last_50_hours, "intraday_10_15min_bars": recent_15m}
     except Exception as e:
         return {"error": str(e), "symbol": symbol}
 
@@ -107,6 +110,11 @@ def get_technical_indicators(symbol: str) -> Dict[str, Any]:
         df['EMA_20'] = EMAIndicator(close=df['close'], window=20).ema_indicator()
         df['EMA_50'] = EMAIndicator(close=df['close'], window=50).ema_indicator()
         
+        # Calculate VWAP
+        from ta.volume import VolumeWeightedAveragePrice
+        vwap = VolumeWeightedAveragePrice(high=df['high'], low=df['low'], close=df['close'], volume=df['volume'])
+        df['VWAP'] = vwap.volume_weighted_average_price()
+        
         latest = df.iloc[-1]
         
         return {
@@ -118,10 +126,12 @@ def get_technical_indicators(symbol: str) -> Dict[str, Any]:
             "MACD_Signal": round(latest['MACD_Signal'], 4),
             "EMA_20_Support": round(latest['EMA_20'], 2),
             "EMA_50_Support": round(latest['EMA_50'], 2),
+            "VWAP": round(latest['VWAP'], 2),
             "Interpretation": {
                 "RSI": "Oversold/Buy" if latest['RSI'] < 30 else "Overbought/Sell" if latest['RSI'] > 70 else "Neutral",
                 "MACD": "Bullish Momentum" if latest['MACD'] > latest['MACD_Signal'] else "Bearish Momentum",
-                "Trend": "Bullish (Above EMA 20)" if latest['close'] > latest['EMA_20'] else "Bearish (Below EMA 20)"
+                "Trend": "Bullish (Above EMA 20)" if latest['close'] > latest['EMA_20'] else "Bearish (Below EMA 20)",
+                "Volume": "Bullish (Price above VWAP)" if latest['close'] > latest['VWAP'] else "Bearish (Price below VWAP)"
             }
         }
     except Exception as e:
