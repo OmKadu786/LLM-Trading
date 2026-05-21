@@ -50,10 +50,6 @@ jobs:
           echo "⏳ Waiting for MCP servers to boot..."
           sleep 8
 
-      - name: Run trading session or 15-min check
+      - name: Run 15-Minute Trading Session
         run: |
-          if [ "${{ github.event.schedule }}" == "0 13-21 * * 1-5" ]; then
-            python main.py --cron-hourly
-          else
-            python main.py --cron-check
-          fi
+          python main.py --cron-hourly
