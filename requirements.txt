@@ -17,3 +17,5 @@ python-dotenv>=1.0.0
 tushare
 efinance
 pytz
+pandas
+ta

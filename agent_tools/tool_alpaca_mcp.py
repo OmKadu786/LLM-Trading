@@ -65,23 +65,67 @@ def get_price_live(symbol: str, date: str) -> Dict[str, Any]:
 
 @mcp.tool()
 def get_price_history(symbol: str) -> Dict[str, Any]:
-    """Get market momentum data: the last 7 days (Open/Close) and today's recent hourly intraday action."""
+    """Get market momentum data: the last 7 days of Daily bars, and the last 2 days of 15-Minute intraday bars (Open, High, Low, Close, Volume)."""
     try:
-        from datetime import datetime
         client = get_alpaca_client()
         daily_bars = client.get_bars(symbol, timeframe="1Day", limit=7)
-        last_7_days = [{"date": b["timestamp"].split(" ")[0], "open": b["open"], "close": b["close"]} for b in daily_bars]
+        last_7_days = [{"date": b["timestamp"].split(" ")[0], "open": b["open"], "high": b["high"], "low": b["low"], "close": b["close"], "volume": b["volume"]} for b in daily_bars]
         
-        hourly_bars = client.get_bars(symbol, timeframe="1Hour", limit=12)
-        intraday_today = []
-        if hourly_bars:
-            latest_day = hourly_bars[-1]["timestamp"].split(" ")[0]
-            intraday_today = [{"time": b["timestamp"], "open": b["open"], "close": b["close"], "high": b["high"], "low": b["low"]}
-                              for b in hourly_bars if b["timestamp"].startswith(latest_day)]
+        intraday_bars = client.get_bars(symbol, timeframe="15Min", limit=40)
+        recent_15m = [{"time": b["timestamp"], "open": b["open"], "high": b["high"], "low": b["low"], "close": b["close"], "volume": b["volume"]} for b in intraday_bars]
 
-        return {"symbol": symbol, "last_7_days_trend": last_7_days, "intraday_today_hourly": intraday_today}
+        return {"symbol": symbol, "daily_trend_7_days": last_7_days, "intraday_15min_bars": recent_15m}
     except Exception as e:
         return {"error": str(e), "symbol": symbol}
+
+@mcp.tool()
+def get_technical_indicators(symbol: str) -> Dict[str, Any]:
+    """Get powerful technical indicators for a stock based on the 1-Hour timeframe (RSI, MACD, and 20-EMA / 50-EMA). 
+    Use this to identify if a stock is Overbought (RSI > 70), Oversold (RSI < 30), or crossing moving averages."""
+    try:
+        import pandas as pd
+        from ta.momentum import RSIIndicator
+        from ta.trend import MACD, EMAIndicator
+        
+        client = get_alpaca_client()
+        bars = client.get_bars(symbol, timeframe="1Hour", limit=100)
+        if not bars or len(bars) < 50:
+            return {"error": "Not enough data to calculate indicators."}
+            
+        df = pd.DataFrame(bars)
+        
+        # Calculate RSI (14 period)
+        rsi_indicator = RSIIndicator(close=df['close'], window=14)
+        df['RSI'] = rsi_indicator.rsi()
+        
+        # Calculate MACD
+        macd_indicator = MACD(close=df['close'])
+        df['MACD'] = macd_indicator.macd()
+        df['MACD_Signal'] = macd_indicator.macd_signal()
+        
+        # Calculate EMAs
+        df['EMA_20'] = EMAIndicator(close=df['close'], window=20).ema_indicator()
+        df['EMA_50'] = EMAIndicator(close=df['close'], window=50).ema_indicator()
+        
+        latest = df.iloc[-1]
+        
+        return {
+            "symbol": symbol,
+            "timestamp": latest['timestamp'],
+            "current_price": latest['close'],
+            "RSI_14": round(latest['RSI'], 2),
+            "MACD": round(latest['MACD'], 4),
+            "MACD_Signal": round(latest['MACD_Signal'], 4),
+            "EMA_20_Support": round(latest['EMA_20'], 2),
+            "EMA_50_Support": round(latest['EMA_50'], 2),
+            "Interpretation": {
+                "RSI": "Oversold/Buy" if latest['RSI'] < 30 else "Overbought/Sell" if latest['RSI'] > 70 else "Neutral",
+                "MACD": "Bullish Momentum" if latest['MACD'] > latest['MACD_Signal'] else "Bearish Momentum",
+                "Trend": "Bullish (Above EMA 20)" if latest['close'] > latest['EMA_20'] else "Bearish (Below EMA 20)"
+            }
+        }
+    except Exception as e:
+        return {"error": f"Failed to calculate indicators: {str(e)}", "symbol": symbol}
 
 if __name__ == "__main__":
     port = int(os.getenv("TRADE_HTTP_PORT", "8002"))
