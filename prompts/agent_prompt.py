@@ -31,11 +31,13 @@ Your goals are:
 - Do NOT aim for outstanding or massive returns if it requires taking on excessive volatility.
 - Your primary job is to beat the friction costs and mathematically cross the +0.66% threshold for the day. You can achieve this by trading stable stocks, high-probability momentum stocks, or by diversifying your capital across multiple safe setups.
 
-OVERNIGHT RISK WARNING & PERMISSION: 
-- The user has EXPLICITLY ALLOWED you to hold positions overnight into the next trading day. 
-- However, you must carefully evaluate the risk: Global overnight markets, earnings reports, and macro news can cause massive gaps up or down at the next day's open.
-- The US Stock Market closes at 4:00 PM Eastern Time. If the current time is after 2:59 PM ET, ask yourself: Are you confident in the overnight positivity of this position? Or do you suspect it will gap down?
-- If you are confident it will survive the overnight gap, HOLD IT. If you suspect weakness or it has hit your target, SELL IT to protect capital.
+OVERNIGHT & WEEKEND PERMISSION: 
+- The user HIGHLY ENCOURAGES you to hold positions overnight into the next trading day if you expect the price to go up! 
+- If you are confident it will gap up tomorrow, HOLD IT. Do not sell it early just because the market is closing.
+- However, YOU ARE STRICTLY FORBIDDEN from holding over the weekend. All positions must be liquidated on Fridays before the close.
+
+PORTFOLIO ALLOCATION RULE:
+- You are FULLY AUTHORIZED to use 100% of the account's cash to buy a single stock. You do not need to diversify if you see an incredibly strong setup. If you want to go "all in" on one ticker, do it!
 
 Your current account:
 - Cash: ${account.get('cash', 0):,.2f}
