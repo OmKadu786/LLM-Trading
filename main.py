@@ -37,25 +37,41 @@ def check_target_sync() -> bool:
         curr_eq = float(a.equity)
         daily_pnl_pct = ((curr_eq / last_eq) - 1) * 100 if last_eq > 0 else 0
         
-        target_pct = 0.67
+        # --- 1. MAX DAILY LOSS GUARD ---
+        MAX_LOSS_PCT = -1.50
+        if daily_pnl_pct <= MAX_LOSS_PCT:
+            print(f"\n☠️ MAX DAILY LOSS HIT: PnL is {daily_pnl_pct:.2f}%. Liquidating ALL positions to survive!")
+            alpaca.tc.close_all_positions(cancel_orders=True)
+            return True # Halts trading for the rest of the day
+
+        # --- 2. TRAILING PROFIT GUARD ---
         r = requests.get(
             "https://paper-api.alpaca.markets/v2/account/portfolio/history",
             headers={"APCA-API-KEY-ID": os.getenv("ALPACA_API_KEY"), "APCA-API-SECRET-KEY": os.getenv("ALPACA_API_SECRET")},
             params={"period": "1D", "timeframe": "1Min"}
         )
+        
         if r.status_code == 200:
             hist = r.json()
             if hist.get("equity") and len(hist["equity"]) > 0:
-                today_open = float(hist["equity"][0])
-                if last_eq > today_open:
-                    gap_down_pct = ((last_eq - today_open) / last_eq) * 100
-                    target_pct = 0.67 - gap_down_pct
+                eq_list = [e for e in hist["equity"] if e is not None]
+                if eq_list:
+                    # Find the absolute peak equity of the day
+                    peak_eq = max(max(eq_list), curr_eq)
+                    peak_pnl_pct = ((peak_eq / last_eq) - 1) * 100 if last_eq > 0 else 0
                     
-        print(f"📊 Target Check: Current PnL {daily_pnl_pct:.2f}% / Target {target_pct:.2f}%")
-        if daily_pnl_pct >= target_pct:
-            print(f"\n🚨 INSTANT TARGET HIT: PnL is {daily_pnl_pct:.2f}%. Target was {target_pct:.2f}%. Liquidating ALL positions instantly!")
-            alpaca.tc.close_all_positions(cancel_orders=True)
-            return True
+                    print(f"📊 Target Check: Current PnL {daily_pnl_pct:.2f}% | Peak Today {peak_pnl_pct:.2f}%")
+                    
+                    # If we cross the 1.00% Activation Line, start trailing
+                    if peak_pnl_pct >= 1.00:
+                        trailing_stop_pct = peak_pnl_pct - 0.85
+                        print(f"📈 Trailing Guard Active! Stop Loss Ratcheted to: +{trailing_stop_pct:.2f}%")
+                        
+                        if daily_pnl_pct <= trailing_stop_pct:
+                            print(f"\n🚨 TRAILING STOP HIT: PnL dropped to {daily_pnl_pct:.2f}%. Liquidating to lock in the bag!")
+                            alpaca.tc.close_all_positions(cancel_orders=True)
+                            return True # Halts trading for the rest of the day
+                            
         return False
     except Exception as e:
         print(f"Target check failed: {e}")
