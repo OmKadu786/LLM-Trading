@@ -2,8 +2,8 @@ name: AI-Trader Live Session
 
 on:
   schedule:
-    # Run every 15 minutes during US market hours (9 AM - 5 PM ET)
-    - cron: '*/15 13-21 * * 1-5'
+    # Run every 15 minutes during US market hours (Offset by 2 mins to bypass GitHub server overload)
+    - cron: '2,17,32,47 13-21 * * 1-5'
   workflow_dispatch:  # Manual trigger button on GitHub
 
 jobs:
