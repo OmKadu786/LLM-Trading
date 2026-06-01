@@ -18,19 +18,29 @@ models.
 
 ## 🧠 Trading Logic & Strategy
 
-The agent operates on an hourly frequency using a **multi-step agentic loop**
-(Chain-of-Thought simulation):
+The agent has been completely overhauled into a high-frequency, Prop-Firm-optimized swing trader running every **15 minutes**.
 
-1. **Data Gathering:** The agent pulls hourly OHLC prices for the top 100 Nasdaq
-   stocks.
-2. **Information Retrieval:** It uses a search tool to scan for macro-economic
-   news and stock-specific catalysts (earnings, product launches, etc.).
-3. **Analytical Reasoning:** Utilizing a dedicated Math tool, the agent
-   calculates technical indicators like RSI and moving averages.
-4. **Strategic Execution:** The agent follows a **"Barbell
-   Strategy"**—concentrating capital into high-conviction technology leaders
-   (like NVDA, MSFT) while maintaining a safety net of defensive consumer
-   staples and utilities (like PEP, XEL).
+### 1. The "Top 12 Mega-Cap" Universe
+To eliminate slippage and high friction costs (which destroy small-cap strategies), the bot is strictly restricted to trading only the most liquid Mega-Cap stocks: `AAPL, MSFT, NVDA, AMZN, META, GOOG, GOOGL, TSLA, LLY, AVGO, JPM, V`.
+
+### 2. Quantitative Engine (Technical Analysis)
+The agent utilizes `pandas_ta` to pull granular 15-minute, 1-hour, and Daily candles, calculating real-time:
+*   **VWAP** (Volume Weighted Average Price)
+*   **RSI (14)** and **MACD** for momentum divergence
+*   **EMA (20 & 50)** for trend confirmation
+
+### 3. Execution & Allocation
+*   **All-In Conviction:** The agent is authorized to deploy up to 100% of the portfolio into a single stock if the technical setup is A+.
+*   **Overnight Swing Trading:** The agent intentionally holds strong momentum stocks overnight to capture massive morning gap-ups.
+
+### 4. The "Dual-Guard" Risk Management System
+To survive Prop Firm evaluations (like Trade The Pool), the core execution script (`main.py`) acts as a strict supervisor over the LLM:
+*   **Trailing Profit Guard:** If the daily account PnL hits `+1.00%`, a trailing stop activates. It ratchets exactly `-0.85%` behind the absolute daily peak. This gives winners infinite upside (e.g., catching +3.0% gap-ups) while guaranteeing profits are locked in if the market reverses.
+*   **Max Daily Loss:** A hard `-1.50%` kill switch. If the account drops 1.5% in a single day, the script instantly dumps all positions and puts the AI to sleep to prevent revenge trading.
+*   **Weekend Hard-Stop:** The bot automatically liquidates all holdings at 3:45 PM ET on Fridays to prevent holding risk over the weekend.
+
+### 5. Infrastructure Hack
+To bypass GitHub Actions throttling on free tiers (which drop `*/15` schedules at the top of the hour), the cron job is specifically offset to run at `:02, :17, :32, :47`. This sneaks the execution requests past GitHub's load balancers.
 
 ---
 
