@@ -74,21 +74,44 @@ The agent has been running live in a paper trading environment, undergoing a mas
 *   **TTP Commissions:** -$72.00
 *   **Total Net P&L:** **+$1,405.74**
 
-#### Daily Breakdown (Since Upgrade)
-| Date       | Market Condition | Net P&L | Bot Action |
+#### Full Daily Equity Curve (April 17 – Present)
+
+| Date       | Total Equity ($) | Daily Return (%) | Phase |
 | :--------- | :--------------- | :--------- | :--------- |
-| 2026-05-20 | Choppy / Red     | `-$21.50`  | Cut small losses instantly |
-| 2026-05-21 | Trending Up      | `+$61.32`  | Scalped, held overnight |
-| 2026-05-22 | Morning Gap      | `+$225.62` | Liquidated gap-up |
-| 2026-05-26 | Choppy / Red     | `-$299.83` | Cut losses, held TSLA overnight |
-| 2026-05-27 | Massive Gap-Up   | `+$829.44` | Sold TSLA at peak |
-| 2026-05-28 | Choppy / Recovery| `-$104.90` | Cut MSFT loss, re-bought dip |
-| 2026-05-29 | Massive Gap-Up   | `+$715.59` | Sold MSFT gap-up |
+| 2026-04-17 | `$30,000.00` | `+0.00%` | Phase 1: Margin & Small Caps |
+| 2026-04-18 | `$30,063.04` | `+0.21%` | Phase 1: Margin & Small Caps |
+| 2026-04-21 | `$30,657.24` | `+1.98%` | Phase 1: Margin & Small Caps |
+| 2026-04-22 | `$29,121.20` | `-5.01%` | Phase 1: Margin & Small Caps (Leverage Crush) |
+| 2026-04-23 | `$32,497.45` | `+11.59%` | Phase 1: Margin & Small Caps |
+| 2026-04-24 | `$32,043.68` | `-1.40%` | Phase 1: Margin & Small Caps |
+| 2026-04-25 | `$33,011.43` | `+3.02%` | Phase 1: Margin & Small Caps |
+| 2026-04-28 | `$32,862.35` | `-0.45%` | Phase 1: Margin & Small Caps |
+| 2026-04-29 | `$32,355.27` | `-1.54%` | Phase 1: Margin & Small Caps |
+| 2026-04-30 | `$32,314.92` | `-0.12%` | Phase 1: Margin & Small Caps |
+| 2026-05-01 | `$32,173.57` | `-0.44%` | Phase 1: Margin & Small Caps |
+| 2026-05-02 | `$32,823.76` | `+2.02%` | Phase 1: Margin & Small Caps |
+| 2026-05-06 | `$31,843.43` | `-2.99%` | Phase 1: Margin & Small Caps |
+| 2026-05-07 | `$31,978.64` | `+0.42%` | Phase 1: Margin & Small Caps |
+| 2026-05-08 | `$31,694.76` | `-0.89%` | Phase 1: Margin & Small Caps |
+| 2026-05-12 | `$31,650.40` | `-0.14%` | Phase 1: Margin & Small Caps |
+| 2026-05-13 | `$31,234.15` | `-1.32%` | Phase 1: Margin & Small Caps |
+| 2026-05-14 | `$31,591.68` | `+1.14%` | Phase 1: Margin & Small Caps |
+| 2026-05-15 | `$31,704.58` | `+0.36%` | Phase 1: Margin & Small Caps |
+| 2026-05-16 | `$31,561.48` | `-0.45%` | Phase 1: Margin & Small Caps |
+| 2026-05-19 | `$31,542.13` | `-0.06%` | Phase 1: Margin & Small Caps |
+| **2026-05-20** | **`$31,251.03`** | **`-0.92%`** | **Phase 2: Transition to Top 12 & Cash Account** |
+| 2026-05-21 | `$31,271.76` | `+0.07%` | Phase 2: Top 12 & Cash |
+| 2026-05-22 | `$31,464.98` | `+0.62%` | Phase 2: Top 12 & Cash |
+| 2026-05-23 | `$31,694.26` | `+0.73%` | Phase 2: Top 12 & Cash |
+| 2026-05-27 | `$31,412.38` | `-0.89%` | Phase 2: Top 12 & Cash (Choppy Day) |
+| 2026-05-28 | `$32,256.08` | `+2.69%` | Phase 2: Top 12 & Cash (Overnight Gap) |
+| 2026-05-29 | `$32,246.99` | `-0.03%` | Phase 2: Top 12 & Cash (Cut small loss) |
+| 2026-05-30 | `$32,884.00` | `+1.98%` | Phase 2: Top 12 & Cash (Overnight Gap) |
 
 ---
 
 ## 📊 Key Insights
 
-1. **Keep Losers Small, Let Winners Run:** The Phase 2 daily breakdown perfectly reflects professional swing trading. On bad days, the bot cuts losses at -$100 to -$300. On good days, it holds overnight and rips +$700 to +$800.
-2. **Slippage is the Enemy:** Moving to Mega-Caps completely eliminated the hidden bid/ask spread fees that destroyed the Phase 1 strategy.
-3. **Patience Pays:** By implementing a 15-minute execution cycle and explicitly telling the AI "not to overtrade", commission bloat was eliminated, allowing the bot to simply sit in cash or confidently hold a strong position without churning fees.
+1. **Leverage is Dangerous (Phase 1):** In Phase 1, using margin caused wild, unpredictable swings (e.g., -5.01% on April 22, -2.99% on May 6). This volatility is incompatible with Prop Firm drawdown rules.
+2. **Keep Losers Small, Let Winners Run (Phase 2):** After restricting the bot to 1x leverage and Mega-Caps, the daily breakdown perfectly reflects professional swing trading. On bad days, the bot takes controlled losses (-0.89%). On good days, it holds overnight and rips +2.69% and +1.98%.
+3. **Slippage is the Enemy:** Moving to Mega-Caps completely eliminated the hidden bid/ask spread fees that destroyed the Phase 1 strategy.
