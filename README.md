@@ -56,58 +56,39 @@ To bypass GitHub Actions throttling on free tiers (which drop `*/15` schedules a
 
 ---
 
-## 📈 Backtest Results (Oct 1 – Nov 7, 2025)
+## 📈 Live Paper Performance (April 17, 2026 – Present)
 
-The agent was tested over a 5-week period starting with **$10,000.00** of
-initial capital.
+The agent has been running live in a paper trading environment, undergoing a massive architectural shift mid-flight.
 
-- **Final Equity:** $10,838.93
-- **Total Return:** **+8.39%** ✅
-- **Peak Return:** **+10.49%** (Reached on Nov 05, 2025)
+### Phase 1: The "Wild West" (April 17 – May 19)
+*   **Strategy:** Trading a universe of 100+ stocks, utilizing leverage (margin), and running without robust technical indicators.
+*   **Outcome:** The system suffered from massive "friction" (bid/ask spread slippage and high commission fees on small-cap stocks). Leverage caused outsized drawdowns on choppy days.
 
-### Daily Equity Performance
+### Phase 2: The "Mega-Cap Upgrade" (May 20 – Present)
+*   **The Pivot:** On May 20th, leverage was strictly disabled (reverting to a 1x Cash Account) and the universe was restricted entirely to the **Top 12 Mega-Caps**. Technical indicators (VWAP, RSI, MACD) and Overnight Swing permissions were injected into the AI's brain.
+*   **Outcome:** The win rate and profitability skyrocketed as friction costs dropped to near zero. 
 
-| Date       | Total Equity ($) | Return (%) |
-| :--------- | :--------------- | :--------- |
-| 2025-10-01 | $10,065.67       | +0.66%     |
-| 2025-10-02 | $10,055.45       | +0.55%     |
-| 2025-10-03 | $10,004.05       | +0.04%     |
-| 2025-10-06 | $10,215.09       | +2.15%     |
-| 2025-10-07 | $10,199.71       | +2.00%     |
-| 2025-10-08 | $10,285.43       | +2.85%     |
-| 2025-10-09 | $10,302.28       | +3.02%     |
-| 2025-10-10 | $10,097.13       | +0.97%     |
-| 2025-10-13 | $10,194.99       | +1.95%     |
-| 2025-10-14 | $10,236.13       | +2.36%     |
-| 2025-10-15 | $10,269.39       | +2.69%     |
-| 2025-10-16 | $10,246.90       | +2.47%     |
-| 2025-10-17 | $10,327.98       | +3.28%     |
-| 2025-10-20 | $10,467.57       | +4.68%     |
-| 2025-10-21 | $10,459.74       | +4.60%     |
-| 2025-10-22 | $10,332.84       | +3.33%     |
-| 2025-10-23 | $10,437.64       | +4.38%     |
-| 2025-10-24 | $10,576.31       | +5.76%     |
-| 2025-10-27 | $10,837.25       | +8.37%     |
-| 2025-10-28 | $11,003.14       | +10.03%    |
-| 2025-10-29 | $11,027.33       | +10.27%    |
-| 2025-10-30 | $10,967.51       | +9.68%     |
-| 2025-10-31 | $10,972.03       | +9.72%     |
-| 2025-11-03 | $11,018.25       | +10.18%    |
-| 2025-11-04 | $10,912.78       | +9.13%     |
-| 2025-11-05 | $11,049.44       | +10.49%    |
-| 2025-11-06 | $10,885.14       | +8.85%     |
-| 2025-11-07 | $10,838.93       | +8.39%     |
+**Performance Since May 20th Upgrade:**
+*   **Total Trades:** 96
+*   **Gross P&L:** +$1,477.74
+*   **TTP Commissions:** -$72.00
+*   **Total Net P&L:** **+$1,405.74**
+
+#### Daily Breakdown (Since Upgrade)
+| Date       | Market Condition | Net P&L | Bot Action |
+| :--------- | :--------------- | :--------- | :--------- |
+| 2026-05-20 | Choppy / Red     | `-$21.50`  | Cut small losses instantly |
+| 2026-05-21 | Trending Up      | `+$61.32`  | Scalped, held overnight |
+| 2026-05-22 | Morning Gap      | `+$225.62` | Liquidated gap-up |
+| 2026-05-26 | Choppy / Red     | `-$299.83` | Cut losses, held TSLA overnight |
+| 2026-05-27 | Massive Gap-Up   | `+$829.44` | Sold TSLA at peak |
+| 2026-05-28 | Choppy / Recovery| `-$104.90` | Cut MSFT loss, re-bought dip |
+| 2026-05-29 | Massive Gap-Up   | `+$715.59` | Sold MSFT gap-up |
 
 ---
 
 ## 📊 Key Insights
 
-1. **Concentration Alpha:** The agent generated its highest returns by
-   concentrating into **NVDA** and **MSFT** during the late-October tech surge.
-2. **Risk Mitigation:** When the market cooled in early November, the agent
-   successfully pivoted to defensive Holdings (**XEL**, **PEP**) and increased
-   its cash buffer, preventing a larger drawdown and locking in the 8% benchmark
-   target.
-3. **Cost Efficiency:** Using DeepSeek-V3 allowed for a full 1-month
-   high-precision backtest for approximately **$3.00** in API tokens,
-   significantly cheaper than equivalent models like GPT-4o.
+1. **Keep Losers Small, Let Winners Run:** The Phase 2 daily breakdown perfectly reflects professional swing trading. On bad days, the bot cuts losses at -$100 to -$300. On good days, it holds overnight and rips +$700 to +$800.
+2. **Slippage is the Enemy:** Moving to Mega-Caps completely eliminated the hidden bid/ask spread fees that destroyed the Phase 1 strategy.
+3. **Patience Pays:** By implementing a 15-minute execution cycle and explicitly telling the AI "not to overtrade", commission bloat was eliminated, allowing the bot to simply sit in cash or confidently hold a strong position without churning fees.
