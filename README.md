@@ -18,7 +18,7 @@ models.
 
 ## 🧠 Trading Logic & Strategy
 
-The agent has been completely overhauled into a high-frequency, Prop-Firm-optimized swing trader running every **15 minutes**.
+The agent has been completely overhauled into a high-frequency, Prop-Firm-optimized swing trader running **once an hour**.
 
 ### 1. The "Top 12 Mega-Cap" Universe
 To eliminate slippage and high friction costs (which destroy small-cap strategies), the bot is strictly restricted to trading only the most liquid Mega-Cap stocks: `AAPL, MSFT, NVDA, AMZN, META, GOOG, GOOGL, TSLA, LLY, AVGO, JPM, V`.
@@ -40,7 +40,7 @@ To survive Prop Firm evaluations (like Trade The Pool), the core execution scrip
 *   **Weekend Hard-Stop:** The bot automatically liquidates all holdings at 3:45 PM ET on Fridays to prevent holding risk over the weekend.
 
 ### 5. Infrastructure Hack
-To bypass GitHub Actions throttling on free tiers (which drop `*/15` schedules at the top of the hour), the cron job is specifically offset to run at `:02, :17, :32, :47`. This sneaks the execution requests past GitHub's load balancers.
+To bypass GitHub Actions throttling on free tiers (which drop high-frequency schedules), the cron job has been reduced to an hourly schedule, specifically offset to run at `:17` past the hour. This sneaks the execution requests past GitHub's top-of-the-hour load balancers.
 
 ---
 
