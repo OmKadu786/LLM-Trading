@@ -11,92 +11,124 @@ from agent.base_agent.base_agent import BaseAgent
 from tools.alpaca_client import get_alpaca_client
 import requests
 
-LIQUIDATED_TODAY_DATE = None
+LIQUIDATED_TODAY_DATE    = None   # tracks the calendar date of last liquidation
+POST_LIQ_BASE_EQ        = None   # equity snapshot right after liquidation (new baseline)
+POST_LIQ_UNIX_TIME      = None   # unix timestamp of liquidation (filter history after this)
 
 def check_target_sync() -> bool:
-    """Synchronous version of target checker for GitHub Actions intervals"""
+    """Dual-Guard: checks max daily loss + trailing profit stop.
+    After a mid-day liquidation, all math resets to the post-liquidation equity
+    baseline so new trades made later that day have full protection."""
     try:
         import pytz
         from datetime import datetime
-        
+        global POST_LIQ_BASE_EQ, POST_LIQ_UNIX_TIME
+
         alpaca = get_alpaca_client()
         clock = alpaca.tc.get_clock()
         if not clock.is_open:
             return False
-            
+
         # --- FRIDAY WEEKEND HARD STOP ---
         et_tz = pytz.timezone('US/Eastern')
         now_et = datetime.now(et_tz)
         if now_et.weekday() == 4 and now_et.hour == 15 and now_et.minute >= 45:
-            print("🛑 [WEEKEND HARD STOP] It is 3:45 PM ET on a FRIDAY. Liquidating all positions to prevent weekend holding!")
+            print("🛑 [WEEKEND HARD STOP] Liquidating all positions before weekend!")
             alpaca.tc.close_all_positions(cancel_orders=True)
             return True
 
         a = alpaca.tc.get_account()
         last_eq = float(a.last_equity)
         curr_eq = float(a.equity)
-        daily_pnl_pct = ((curr_eq / last_eq) - 1) * 100 if last_eq > 0 else 0
-        
+
+        # Use post-liquidation baseline if we already liquidated today,
+        # otherwise fall back to yesterday's closing equity.
+        base_eq = POST_LIQ_BASE_EQ if POST_LIQ_BASE_EQ else last_eq
+        daily_pnl_pct = ((curr_eq / base_eq) - 1) * 100 if base_eq > 0 else 0
+
         # --- 1. MAX DAILY LOSS GUARD ---
         MAX_LOSS_PCT = -1.50
         if daily_pnl_pct <= MAX_LOSS_PCT:
-            print(f"\n☠️ MAX DAILY LOSS HIT: PnL is {daily_pnl_pct:.2f}%. Liquidating ALL positions to survive!")
+            print(f"\n☠️ MAX DAILY LOSS HIT: PnL is {daily_pnl_pct:.2f}% from base. Liquidating ALL positions!")
             alpaca.tc.close_all_positions(cancel_orders=True)
-            return True # Halts trading for the rest of the day
+            return True
 
         # --- 2. TRAILING PROFIT GUARD ---
         r = requests.get(
             "https://paper-api.alpaca.markets/v2/account/portfolio/history",
-            headers={"APCA-API-KEY-ID": os.getenv("ALPACA_API_KEY"), "APCA-API-SECRET-KEY": os.getenv("ALPACA_API_SECRET")},
+            headers={"APCA-API-KEY-ID": os.getenv("ALPACA_API_KEY"),
+                     "APCA-API-SECRET-KEY": os.getenv("ALPACA_API_SECRET")},
             params={"period": "1D", "timeframe": "1Min"}
         )
-        
+
         if r.status_code == 200:
             hist = r.json()
-            if hist.get("equity") and len(hist["equity"]) > 0:
-                eq_list = [e for e in hist["equity"] if e is not None]
-                if eq_list:
-                    # Find the absolute peak equity of the day
-                    peak_eq = max(max(eq_list), curr_eq)
-                    peak_pnl_pct = ((peak_eq / last_eq) - 1) * 100 if last_eq > 0 else 0
-                    
-                    print(f"📊 Target Check: Current PnL {daily_pnl_pct:.2f}% | Peak Today {peak_pnl_pct:.2f}%")
-                    
-                    # If we cross the 1.00% Activation Line, start trailing
-                    if peak_pnl_pct >= 1.00:
-                        trailing_stop_pct = peak_pnl_pct - 0.85
-                        print(f"📈 Trailing Guard Active! Stop Loss Ratcheted to: +{trailing_stop_pct:.2f}%")
-                        
-                        if daily_pnl_pct <= trailing_stop_pct:
-                            print(f"\n🚨 TRAILING STOP HIT: PnL dropped to {daily_pnl_pct:.2f}%. Liquidating to lock in the bag!")
-                            alpaca.tc.close_all_positions(cancel_orders=True)
-                            return True # Halts trading for the rest of the day
-                            
+            raw_eq   = hist.get("equity", []) or []
+            raw_ts   = hist.get("timestamp", []) or []
+
+            # If we liquidated mid-day, only look at history AFTER that moment
+            # so the old morning peak doesn't immediately re-trigger the stop.
+            if POST_LIQ_UNIX_TIME and raw_ts:
+                eq_list = [
+                    e for e, t in zip(raw_eq, raw_ts)
+                    if e is not None and t >= POST_LIQ_UNIX_TIME
+                ]
+            else:
+                eq_list = [e for e in raw_eq if e is not None]
+
+            if eq_list:
+                peak_eq      = max(max(eq_list), curr_eq)
+                peak_pnl_pct = ((peak_eq / base_eq) - 1) * 100 if base_eq > 0 else 0
+
+                print(f"📊 Target Check: Current {daily_pnl_pct:.2f}% | Peak {peak_pnl_pct:.2f}% (base: ${base_eq:,.2f})")
+
+                if peak_pnl_pct >= 1.00:
+                    trailing_stop_pct = peak_pnl_pct - 0.85
+                    print(f"📈 Trailing Guard Active! Floor at: +{trailing_stop_pct:.2f}%")
+
+                    if daily_pnl_pct <= trailing_stop_pct:
+                        print(f"\n🚨 TRAILING STOP HIT: {daily_pnl_pct:.2f}%. Locking in profits!")
+                        alpaca.tc.close_all_positions(cancel_orders=True)
+                        return True
+
         return False
     except Exception as e:
         print(f"Target check failed: {e}")
         return False
 
 async def monitor_target():
-    global LIQUIDATED_TODAY_DATE
+    global LIQUIDATED_TODAY_DATE, POST_LIQ_BASE_EQ, POST_LIQ_UNIX_TIME
     print("🎯 Live target monitor active (Checking every 5s)")
-    
+
     while True:
         try:
-            alpaca = get_alpaca_client()
-            clock = alpaca.tc.get_clock()
+            alpaca    = get_alpaca_client()
+            clock     = alpaca.tc.get_clock()
             today_str = datetime.now().strftime("%Y-%m-%d")
-            
-            if not clock.is_open or LIQUIDATED_TODAY_DATE == today_str:
+
+            # Reset all liquidation state at the start of a new calendar day
+            if LIQUIDATED_TODAY_DATE != today_str:
+                POST_LIQ_BASE_EQ   = None
+                POST_LIQ_UNIX_TIME = None
+                # (don't reset LIQUIDATED_TODAY_DATE here — it resets implicitly
+                #  the next time we liquidate on a new date)
+
+            if not clock.is_open:
                 await asyncio.sleep(60)
                 continue
-                
+
+            # Always check — no per-day lockout
             if check_target_sync():
                 LIQUIDATED_TODAY_DATE = today_str
-                
+                # Capture the new equity baseline immediately after selling
+                a = get_alpaca_client().tc.get_account()
+                POST_LIQ_BASE_EQ   = float(a.equity)
+                POST_LIQ_UNIX_TIME = int(datetime.now().timestamp())
+                print(f"🔄 Guard reset. New baseline: ${POST_LIQ_BASE_EQ:,.2f}. Monitoring resumes immediately.")
+
         except Exception as e:
             pass
-            
+
         await asyncio.sleep(5)
 
 
@@ -109,9 +141,6 @@ async def run_live_session():
     now = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
 
     global LIQUIDATED_TODAY_DATE
-    if LIQUIDATED_TODAY_DATE == datetime.now().strftime("%Y-%m-%d"):
-        print("🛑 Session skipped. Target was already hit today.")
-        return
 
     try:
         alpaca = get_alpaca_client()
