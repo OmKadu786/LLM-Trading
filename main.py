@@ -1,5 +1,5 @@
 import asyncio, os, sys, json
-from datetime import datetime
+from datetime import datetime, date, timedelta
 from pathlib import Path
 from dotenv import load_dotenv
 
@@ -10,6 +10,44 @@ sys.path.insert(0, str(project_root))
 from agent.base_agent.base_agent import BaseAgent
 from tools.alpaca_client import get_alpaca_client
 import requests
+import yfinance as yf
+
+# ── Earnings Guard ────────────────────────────────────────────────
+TOP_12 = ["AAPL", "MSFT", "NVDA", "AMZN", "META", "GOOGL", "GOOG", "TSLA", "LLY", "AVGO", "JPM", "V"]
+
+def has_earnings_tonight(symbol: str) -> bool:
+    """Returns True if the symbol reports earnings today (after close)."""
+    try:
+        cal = yf.Ticker(symbol).calendar
+        earnings_dates = cal.get("Earnings Date", [])
+        today = date.today()
+        for ed in earnings_dates:
+            if ed == today:
+                return True
+        return False
+    except Exception:
+        return False  # fail safe: if unsure, don't liquidate
+
+def liquidate_earnings_positions():
+    """Called at 3:45 PM ET — sells any held position with earnings tonight."""
+    try:
+        import pytz
+        et_tz = pytz.timezone('US/Eastern')
+        now_et = datetime.now(et_tz)
+        # Only run between 3:44–3:56 PM ET on weekdays
+        if not (now_et.weekday() < 5 and now_et.hour == 15 and 44 <= now_et.minute <= 56):
+            return
+
+        alpaca = get_alpaca_client()
+        positions = alpaca.tc.get_all_positions()
+        for pos in positions:
+            sym = pos.symbol
+            if has_earnings_tonight(sym):
+                print(f"📅 EARNINGS GUARD: {sym} reports earnings tonight! Liquidating before close...")
+                alpaca.tc.close_position(sym)
+                print(f"✅ {sym} position closed to comply with TTP earnings rule.")
+    except Exception as e:
+        print(f"Earnings guard error: {e}")
 
 LIQUIDATED_TODAY_DATE    = None   # tracks the calendar date of last liquidation
 POST_LIQ_BASE_EQ        = None   # equity snapshot right after liquidation (new baseline)
@@ -116,6 +154,9 @@ async def monitor_target():
             if not clock.is_open:
                 await asyncio.sleep(60)
                 continue
+
+            # Earnings guard — auto-liquidates holdings with earnings tonight at 3:45 PM ET
+            liquidate_earnings_positions()
 
             # Always check — no per-day lockout
             if check_target_sync():
