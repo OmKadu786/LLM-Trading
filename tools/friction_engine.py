@@ -103,6 +103,22 @@ SYMBOL_TIER_MAP = {
 }
 
 
+TTP_SPREADS = {
+    "MSFT": 0.18,
+    "AAPL": 0.19,
+    "NVDA": 0.09,
+    "AMZN": 0.20,
+    "GOOGL": 0.14,
+    "GOOG": 0.14,
+    "META": 0.22,
+    "TSLA": 0.16,
+    "BRK.B": 0.25,
+    "AVGO": 0.48,
+    "LLY": 0.55,
+    "V": 0.17,
+    "JPM": 0.15
+}
+
 # ---------------------------------------------------------------------------
 # Data Classes
 # ---------------------------------------------------------------------------
@@ -119,11 +135,12 @@ class FrictionReport:
     latency_cost:      float = 0.0
     sec_fee:           float = 0.0
     finra_taf:         float = 0.0
+    commission:        float = 0.0
     partial_fill_qty:  int   = 0   # shares that would NOT fill (live risk indicator)
 
     @property
     def total_friction_cost(self) -> float:
-        return self.slippage_cost + self.spread_cost + self.latency_cost + self.sec_fee + self.finra_taf
+        return self.slippage_cost + self.spread_cost + self.latency_cost + self.sec_fee + self.finra_taf + self.commission
 
     @property
     def total_friction_pct(self) -> float:
@@ -138,6 +155,7 @@ class FrictionReport:
             "raw_price":          round(self.raw_price, 4),
             "adjusted_price":     round(self.adjusted_price, 4),
             "friction_breakdown": {
+                "commission_$":   round(self.commission, 4),
                 "slippage_$":     round(self.slippage_cost, 4),
                 "spread_$":       round(self.spread_cost, 4),
                 "latency_$":      round(self.latency_cost, 4),
@@ -177,17 +195,25 @@ def calculate_friction(
     tier      = LIQUIDITY_TIERS[tier_name]
     position_value = raw_price * qty
 
-    # ── Slippage ──────────────────────────────────────────────────────────
-    # On a BUY, price drifts UP against you. On a SELL, price drifts DOWN.
+    # ── Slippage & Latency ────────────────────────────────────────────────
     slippage_rate = tier["slippage_bps"] / 10_000
     slippage_cost = position_value * slippage_rate
-
-    # ── Bid-Ask Spread (half-spread per side) ─────────────────────────────
-    half_spread_rate = tier["half_spread_bps"] / 10_000
-    spread_cost = position_value * half_spread_rate
-
-    # ── Latency Adjustment (flat 0.01% haircut) ───────────────────────────
     latency_cost = position_value * LATENCY_ADJ
+
+    # ── Bid-Ask Spread (TTP specific or fallback) ─────────────────────────
+    # If we have specific TTP spread data, we use it. We pay half the spread
+    # on entry and half on exit. (spread_cost = half spread * qty)
+    sym_upper = symbol.upper()
+    if sym_upper in TTP_SPREADS:
+        full_spread = TTP_SPREADS[sym_upper]
+        spread_cost = (full_spread / 2.0) * qty
+        half_spread_rate = spread_cost / position_value if position_value > 0 else 0.0
+    else:
+        half_spread_rate = tier["half_spread_bps"] / 10_000
+        spread_cost = position_value * half_spread_rate
+
+    # ── TTP Commission ────────────────────────────────────────────────────
+    commission = max(0.75, qty * 0.005)
 
     # ── SEC Fee (sell only) ───────────────────────────────────────────────
     sec_fee = 0.0
@@ -200,13 +226,13 @@ def calculate_friction(
         finra_taf = min(qty * FINRA_TAF_RATE, FINRA_TAF_CAP)
 
     # ── Effective adjusted price ──────────────────────────────────────────
-    # BUY  → you effectively pay MORE (price drifts up + wider ask)
-    # SELL → you effectively receive LESS (price drifts down + lower bid)
-    total_price_drag = slippage_rate + half_spread_rate + LATENCY_ADJ
+    # Spread/Slippage hits price. Commissions/Fees are usually separate, but
+    # we bake price drag directly into adjusted_price to penalize expected profit.
+    total_price_drag_pct = slippage_rate + half_spread_rate + LATENCY_ADJ
     if side == "buy":
-        adjusted_price = raw_price * (1 + total_price_drag)
+        adjusted_price = raw_price * (1 + total_price_drag_pct)
     else:
-        adjusted_price = raw_price * (1 - total_price_drag)
+        adjusted_price = raw_price * (1 - total_price_drag_pct)
 
     # ── Partial fill risk (live risk indicator only, paper still fills 100%) ──
     fill_rate = tier["fill_rate"]
@@ -223,6 +249,7 @@ def calculate_friction(
         latency_cost=latency_cost,
         sec_fee=sec_fee,
         finra_taf=finra_taf,
+        commission=commission,
         partial_fill_qty=unfilled_qty,
     )
 
@@ -233,33 +260,28 @@ def friction_summary_for_prompt() -> str:
     The LLM must account for these costs before deciding whether a trade is worth making.
     """
     return """
-REAL-WORLD TRADING FRICTIONS (apply to every live trade decision):
--------------------------------------------------------------------
-You are operating in paper mode but must reason as if these real costs exist.
+REAL-WORLD TRADING FRICTIONS & TTP COMMISSIONS (apply to every trade decision):
+-------------------------------------------------------------------------------
+You are operating in paper mode but must reason as if TTP's real costs exist.
 Before committing to any trade, verify that your expected profit EXCEEDS the
 friction floor below, otherwise the trade destroys value net of costs.
+
+COMMISSIONS (TTP Specific - charged on both BUY and SELL):
+  Rate: $0.005 per share
+  Minimum: $0.75 per order (this applies to almost all your large-cap trades)
 
 FIXED COSTS (every SELL order):
   SEC Fee          : $0.0278 per $1,000 of stock sold
   FINRA TAF        : $0.166 per 1,000 shares sold (max $8.30/order)
 
-DYNAMIC COSTS (by stock liquidity tier — applied automatically):
-  Tier    | Example Stocks              | Slippage | Spread | Total ~Friction
-  --------|-----------------------------|---------:|-------:|----------------
-  MEGA    | AAPL, NVDA, TSLA, MSFT     |  0.01%   | 0.03%  | ~0.014%/trade
-  LARGE   | AMD, META, PLTR, NFLX      |  0.03%   | 0.07%  | ~0.044%/trade
-  MID     | SMCI, COIN, ARM, MSTR      |  0.08%   | 0.14%  | ~0.130%/trade
-  SMALL   | Any thinly traded stock    |  0.20%   | 0.36%  | ~0.350%/trade
+EXACT TTP SPREADS (Top 12):
+  MSFT: $0.18 | AAPL: $0.19 | NVDA: $0.09 | AMZN: $0.20 | GOOG/L: $0.14
+  META: $0.22 | TSLA: $0.16 | AVGO: $0.48 | LLY: $0.55  | V: $0.17 | JPM: $0.15
+  (You pay half this spread on entry, and half on exit).
 
 MINIMUM PROFIT THRESHOLD RULE:
   You MUST NOT enter a trade unless your projected gain is at LEAST 1.5× the
-  friction cost for that stock's tier. Below this threshold, you are trading
-  for the broker's benefit, not yours.
-
-  MID-tier example (SMCI at $25): friction ≈ $0.60 per $500 position.
-  You need a price move of at least $0.12/share before this trade breaks even.
-
-PARTIAL FILL RISK (live environment only — paper fills 100%):
-  MID/SMALL stocks may partially fill in volatile conditions.
-  Size positions conservatively on low-liquidity stocks.
+  total friction cost (commission + spread + SEC fees).
+  Because you trade expensive Mega-Caps, you buy very few shares, meaning your
+  main cost is the flat $0.75 minimum commission on entry and exit.
 """.strip()
