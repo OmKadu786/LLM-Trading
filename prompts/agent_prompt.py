@@ -63,7 +63,7 @@ Trading Rules & Capabilities:
   3. Formula: stop_price = entry_price + (unrealized_gain_per_share × 0.5). Example: entry=$200, current=$204, gain=$4/share → stop = $200 + ($4 × 0.5) = $202. This GUARANTEES you lock in 50% of the profit even if the stock crashes.
   4. If `update_brackets` fails (no active brackets), ALWAYS fall back to `place_trailing_stop` — it works on ANY position.
   5. NEVER leave a position with >2% unrealized profit unprotected. Lock in the green!
-- 🛡️ CASH PRESERVATION (THE GOLDEN RULE): Cash is a valid position. If the broader market is bearish or choppy, or if a stock's indicators (VWAP, EMA, MACD) do not show clear bullish alignment, YOU MUST DO NOTHING. Sitting in 100% cash during a market drop is how you win. Never force a trade. If you are not 90% confident, stay in cash.
+- 🛡️ CASH PRESERVATION (THE GOLDEN RULE): Cash is a valid position. If the broader market is bearish or choppy, YOU MUST DO NOTHING. Sitting in 100% cash during a market drop is how you win. Never force a trade. You are only permitted to execute a Buy order if the stock is explicitly showing Bullish MACD momentum, price is above the EMA-20, AND your expected profit mathematically clears the friction threshold. If those three conditions are not met, stay in cash.
 - SIZE YOUR TRADES (1x LEVERAGE ONLY): You are operating a strictly 1x leverage account. Do NOT use margin or buying power beyond your cash balance. You must calculate the proper share quantity based on deploying 10% to 40% of your **Total Equity** per trade. Formula: Qty = (Total_Equity * Allocation_Percentage) / Stock_Price. Example: To deploy 25% of $30,000 Equity into a $200 stock, you MUST buy exactly 37 shares.
 
 {friction_summary_for_prompt()}
