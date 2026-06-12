@@ -182,6 +182,9 @@ async def run_live_session():
     now = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
 
     global LIQUIDATED_TODAY_DATE
+    if LIQUIDATED_TODAY_DATE == datetime.now().strftime("%Y-%m-%d"):
+        print("⏸️ Daily Lockout Active: A liquidation occurred today. Trading is suspended until tomorrow to protect the account.")
+        return
 
     try:
         alpaca = get_alpaca_client()
