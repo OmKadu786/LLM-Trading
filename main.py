@@ -53,6 +53,45 @@ LIQUIDATED_TODAY_DATE    = None   # tracks the calendar date of last liquidation
 POST_LIQ_BASE_EQ        = None   # equity snapshot right after liquidation (new baseline)
 POST_LIQ_UNIX_TIME      = None   # unix timestamp of liquidation (filter history after this)
 
+MACRO_CACHE_DATE = None
+MACRO_EVENTS_TODAY = []
+
+def check_macro_events() -> bool:
+    global MACRO_CACHE_DATE, MACRO_EVENTS_TODAY
+    import pytz, requests
+    from datetime import datetime
+    
+    ny_tz = pytz.timezone('America/New_York')
+    now_ny = datetime.now(ny_tz)
+    today_str = now_ny.strftime("%Y-%m-%d")
+    
+    if MACRO_CACHE_DATE != today_str:
+        try:
+            r = requests.get('https://nfs.faireconomy.media/ff_calendar_thisweek.json', headers={'User-Agent':'Mozilla/5.0'}, timeout=5)
+            if r.status_code == 200:
+                events = []
+                for e in r.json():
+                    if e.get('country') == 'USD' and e.get('impact') == 'High':
+                        dt = datetime.fromisoformat(e['date']).astimezone(ny_tz)
+                        if dt.strftime("%Y-%m-%d") == today_str:
+                            events.append(dt)
+                MACRO_EVENTS_TODAY = events
+                MACRO_CACHE_DATE = today_str
+                if events: print(f"📅 Macro Guard loaded {len(events)} High-Impact events for today.")
+        except: pass
+
+    for ev_time in list(MACRO_EVENTS_TODAY):
+        diff = (ev_time - now_ny).total_seconds() / 60.0
+        # If we are within 30 minutes of a high impact macro event
+        if 0 <= diff <= 30:
+            print(f"🚨 MACRO GUARD: High impact USD event at {ev_time.strftime('%I:%M %p')}. Liquidating to Cash to avoid volatility!")
+            try:
+                get_alpaca_client().tc.close_all_positions(cancel_orders=True)
+                MACRO_EVENTS_TODAY.remove(ev_time)
+                return True
+            except: pass
+    return False
+
 def check_target_sync() -> bool:
     """Dual-Guard: checks max daily loss + trailing profit stop.
     After a mid-day liquidation, all math resets to the post-liquidation equity
@@ -157,6 +196,14 @@ async def monitor_target():
 
             # Earnings guard — auto-liquidates holdings with earnings tonight at 3:45 PM ET
             liquidate_earnings_positions()
+
+            # Macro Event Guard - liquidates 30 mins before High Impact USD news
+            if check_macro_events():
+                LIQUIDATED_TODAY_DATE = today_str
+                a = get_alpaca_client().tc.get_account()
+                POST_LIQ_BASE_EQ = float(a.equity)
+                POST_LIQ_UNIX_TIME = int(datetime.now().timestamp())
+                print("🔄 Macro Guard: Trading locked out to wait for news dust to settle.")
 
             # Always check — no per-day lockout
             if check_target_sync():

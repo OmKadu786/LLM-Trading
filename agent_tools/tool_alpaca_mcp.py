@@ -115,7 +115,21 @@ def get_technical_indicators(symbol: str) -> Dict[str, Any]:
         vwap = VolumeWeightedAveragePrice(high=df['high'], low=df['low'], close=df['close'], volume=df['volume'])
         df['VWAP'] = vwap.volume_weighted_average_price()
         
+        # Calculate Relative Volume (RVOL) over last 20 periods
+        avg_vol = df['volume'].rolling(window=20).mean()
+        df['RVOL'] = df['volume'] / avg_vol
+        
         latest = df.iloc[-1]
+        
+        # Calculate QQQ Macro Trend
+        qqq_bars = client.get_bars("QQQ", timeframe="1Hour", limit=50)
+        qqq_trend = "Neutral"
+        if qqq_bars and len(qqq_bars) > 20:
+            q_df = pd.DataFrame(qqq_bars)
+            q_ema = EMAIndicator(close=q_df['close'], window=20).ema_indicator()
+            q_latest_close = q_df.iloc[-1]['close']
+            q_latest_ema = q_ema.iloc[-1]
+            qqq_trend = "BULLISH (Market is Safe)" if q_latest_close > q_latest_ema else "BEARISH (DANGER: Market is dropping)"
         
         return {
             "symbol": symbol,
@@ -127,11 +141,14 @@ def get_technical_indicators(symbol: str) -> Dict[str, Any]:
             "EMA_20_Support": round(latest['EMA_20'], 2),
             "EMA_50_Support": round(latest['EMA_50'], 2),
             "VWAP": round(latest['VWAP'], 2),
+            "RVOL_Percentage": round(latest['RVOL'] * 100, 1),
+            "QQQ_Macro_Trend": qqq_trend,
             "Interpretation": {
                 "RSI": "Oversold/Buy" if latest['RSI'] < 30 else "Overbought/Sell" if latest['RSI'] > 70 else "Neutral",
                 "MACD": "Bullish Momentum" if latest['MACD'] > latest['MACD_Signal'] else "Bearish Momentum",
                 "Trend": "Bullish (Above EMA 20)" if latest['close'] > latest['EMA_20'] else "Bearish (Below EMA 20)",
-                "Volume": "Bullish (Price above VWAP)" if latest['close'] > latest['VWAP'] else "Bearish (Price below VWAP)"
+                "Volume": f"Strong Buying Interest" if latest['RVOL'] > 1.2 else "Weak Volume (Fakeout Warning)",
+                "Macro": "Safe to Buy" if "BULLISH" in qqq_trend else "DO NOT BUY (Market Trend is Down)"
             }
         }
     except Exception as e:
